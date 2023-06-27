@@ -34,7 +34,7 @@ Conda package pycuda
 ## Installation 
 ```
 1. Install the conda environment rapidsai:
-conda create -n rapids-23.04 -c rapidsai -c conda-forge -c nvidia  rapids=23.04 python=3.8 cudatoolkit=11.5 (https://docs.rapids.ai/install)
+conda create -n rapids-23.04 -c rapidsai -c conda-forge -c nvidia  rapids=23.04 python=3.8 cudatoolkit=11.5 [link](https://docs.rapids.ai/install)
 conda activate rapids-23.04
 
 2. Install adition packages:
@@ -43,7 +43,7 @@ conda install -c conda-forge scikit-learn
 conda install -c conda-forge pycuda
 
 3. Download the M5GP source code:
-git clone https://github.com/armandocardenasf/m5gp.git (https://github.com/armandocardenasf/m5gp.git)
+git clone https://github.com/armandocardenasf/m5gp.git [Source](https://github.com/armandocardenasf/m5gp.git)
 
 ```
 ***
