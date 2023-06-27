@@ -6,7 +6,7 @@ This is a Python implementation of  M5GP programming algorithm.
 ```
 ***
 ## Description:  
-M5GP implements a Scikit-Learn type interface using Python, the necessary methods for its evaluation and use are disposed of, in addition a Regressor type object compatible with Scikit-Learn in Python was defined.
+M5GP implements a Scikit-Learn type interface using Python, the necessary methods are available for its evaluation and use, in addition a Regressor type object compatible with Scikit-Learn in Python was defined.
 
 Train/fit functions were defined in a base class of type Regressor.
 
