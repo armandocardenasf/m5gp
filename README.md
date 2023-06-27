@@ -66,8 +66,7 @@ The folllow parameters are passed to Regressor object for M5GP execution modify 
 |4.  MutationProb          | 0.10   |Mutation rate probability. For UMAD probability operator.| 
 |5.  MutationDeleteRateProb     | 0.01      |Mutation delete probability.  For UMAD probability operator.|
 |6.  SizeTournament          | 0.15   |Size of elitist tournament.| 
-|7.  EvaluationMethod          | 0.15   |Error evaluation method.
-                        # 0=RMSE, 
+|7.  EvaluationMethod          | 0.15   |Error evaluation method. <br>     # 0=RMSE, 
                         # 1=R2, 
                         #cuML Methods
                         # 2=LinearRegression, 3=Lasso Regression, 
