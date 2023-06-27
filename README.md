@@ -17,6 +17,16 @@ A function has been defined that returns a sympy-compatible string that specifie
 The integration of the Numba library and cuML within M5GP was carried out with the objective of using it as a variant of evaluation of the models obtained through GP and to improve the efficiency and suitability of the results.
 
 ***
+## Software code languajes, tools, and services used
+```
+Python, SciKit-Learn, NUMBA, PYCUDA CUML, SRBENCH
+```
+***
+## Installation requirements, operating enviroments & dependencies 
+```
+ANACONDA,PYTHON, CONDA, CUML
+```
+***
 ## Parameters:  
 
 Modify the parameters in the configuration.ini file accordingly, to adjust to the desired evolutionary conditions
