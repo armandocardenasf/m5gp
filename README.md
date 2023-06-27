@@ -5,6 +5,18 @@ Implementation of Genetic Programming algorithm in CUDA.
 This is a Python implementation of  M5GP programming algorithm.
 ```
 ***
+## Description:  
+M5GP implements a Scikit-Learn type interface using Python, the necessary methods for its evaluation and use are disposed of, in addition a Regressor type object compatible with Scikit-Learn in Python was defined.
+
+Train/fit functions were defined in a base class of type Regressor.
+
+Established a dictionary of type hyper_params or a list of dictionaries specifying the hyperparameter search space
+
+A function has been defined that returns a sympy-compatible string that specifies the final model and can be manipulated in sympy.
+
+The integration of the Numba library and cuML within M5GP was carried out with the objective of using it as a variant of evaluation of the models obtained through GP and to improve the efficiency and suitability of the results.
+
+***
 ## Parameters:  
 
 Modify the parameters in the configuration.ini file accordingly, to adjust to the desired evolutionary conditions
