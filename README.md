@@ -23,29 +23,34 @@ Python, SciKit-Learn, NUMBA, PYCUDA CUML, SRBENCH
 ```
 ***
 ## Requirements, operating enviroments & dependencies 
-```
 Python > 3.8 version
 Conda  > 23.3 version
 Conda Environment for rapidsai > 23.04
 Conda package scikit-cuda
 Conda package scikit-learn
 Conda package pycuda
-```
+
 ## Installation 
+```
+Steps:
 ```
 1. Install the conda environment rapidsai:
 conda create -n rapids-23.04 -c rapidsai -c conda-forge -c nvidia  rapids=23.04 python=3.8 cudatoolkit=11.5 [link](https://docs.rapids.ai/install)
-conda activate rapids-23.04
 
-2. Install adition packages:
+   conda activate rapids-23.04
+
+3. Install adition packages:
 pip install scikit-cuda
 conda install -c conda-forge scikit-learn
 conda install -c conda-forge pycuda
 
-3. Download the M5GP source code:
-git clone https://github.com/armandocardenasf/m5gp.git [Source](https://github.com/armandocardenasf/m5gp.git)
+4. Download the M5GP source code:
+git clone https://github.com/armandocardenasf/m5gp.git
 
-```
+***
+## Execution:  
+
+
 ***
 ## Parameters:  
 
