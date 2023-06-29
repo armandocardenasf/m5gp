@@ -23,12 +23,12 @@ Python, SciKit-Learn, NUMBA, PYCUDA CUML, SRBENCH
 ```
 ***
 ## Requirements, operating enviroments & dependencies 
-Python > 3.8 version
-Conda  > 23.3 version
-Conda Environment for rapidsai > 23.04
-Conda package scikit-cuda
-Conda package scikit-learn
-Conda package pycuda
+Python > 3.8 version <br>
+Conda  > 23.3 version <br>
+Conda Environment for rapidsai > 23.04 <br>
+Conda package scikit-cuda <br>
+Conda package scikit-learn <br>
+Conda package pycuda <br>
 
 ## Installation 
 1. Install the conda environment rapidsai:
