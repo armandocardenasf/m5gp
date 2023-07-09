@@ -130,7 +130,6 @@ class m5gpRegressor(BaseEstimator):
    
     # -- End of Initialize population --
 
-
     # ***************************  Compute Individuals  ****************************
     hOutIndividuals = [] 
     hStack = []
