@@ -60,7 +60,7 @@ The folllow parameters are passed to Regressor object for M5GP execution modify 
 | Parameter Name     								| Default Value   | Description|
 | -------- 								| -------- |------------|
 |1.  Generations				| 30     |Total number of iterations of the main evolutionary loop. |
-|2.  Individuals				| 128     |Number of individuals generated in the population.|
+|2.  Individuals				| 256     |Number of individuals generated in the population.|
 |3.  GenesIndividuals      | 128     |Number of genes of each individual in the population.|
 |4.  MutationProb          | 0.10   |Mutation rate probability. For UMAD probability operator.| 
 |5.  MutationDeleteRateProb     | 0.01      |Mutation delete probability.  For UMAD probability operator.|
