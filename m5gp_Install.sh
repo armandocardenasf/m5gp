@@ -4,7 +4,6 @@ echo "***** installing m5gp *****"
 echo "******Installing dependencies******"
 # Install some dependencies
 
-
 # remove directory if it exists
 if [ -d m5gp ] ; then
      rm -rf m5gp

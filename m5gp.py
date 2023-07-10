@@ -135,7 +135,7 @@ class m5gpRegressor(BaseEstimator):
     hStack = []
     hStackIdx = []
     hStackModel = []
-
+  
     hOutIndividuals, hStack, hStackIdx, hStackModel = gp2.compute_individuals(
             hInitialPopulation,
             X_train,
