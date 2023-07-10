@@ -8,7 +8,7 @@ echo "******Installing dependencies******"
 if [ -d m5gp ] ; then
      rm -rf m5gp
 fi
- 
+
 git clone https://github.com/armandocardenasf/m5gp.git
 
 cd m5gp
