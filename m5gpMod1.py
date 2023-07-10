@@ -429,12 +429,10 @@ def Survival(self,
     idx_a2 = indexBestIndividual_p * self.GenesIndividuals
     idx_b2 = indexBestIndividual_p * self.GenesIndividuals + self.GenesIndividuals
 
-     #print("SURVIVAL:")
     if (self.evaluationMethod == 0 or self.evaluationMethod >= 2) and  (self.scorer !=2) :
         
         # Checamos si la nueva generacion es mejor que la anterior
         if (hFit[indexBestIndividual_p] < hFitNew[indexBestOffspring]) :
-          print("SURVIVAL 1:")
           # La nueva generacion no fue mejor que la anterior
           # Copia el mejor individuo de la anterior generacion  (idx_a2:idx_b2)
           # al lugar del peor individuo de la nueva generacion (idx_a1:idx_b1)
@@ -445,7 +443,6 @@ def Survival(self,
           indexBestIndividual_p = indexWorstOffspring
 
         else :
-          print("SURVIVAL 2:")
           # La nueva generacion fue mejor que la anterior
           indexBestIndividual_p = indexBestOffspring
 
@@ -459,7 +456,6 @@ def Survival(self,
             stackBestModel_p = stackBestModelNew
     # End if
     elif (self.evaluationMethod == 1) or (self.scorer==2) :
-        print("SURVIVAL 3:")
         # Checamos si el mejor padre de la anterior poblacion es mejor que el mejor hijo en la nueva poblacion*/
         if (hFit[indexBestIndividual_p] > hFitNew[indexBestOffspring]) :
           # Pasa el mejor individuo de la anterior poblacion a la posicion del peor individuo dela nueva poblacion */
