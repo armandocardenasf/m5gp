@@ -1,9 +1,9 @@
-# *********************************************************************
+# **********************************************************************
 # Name: m5gp.py
 # Description: Modulo principal del sistema que implementa los
-# metodos del ciclo evolutivo de GP, asi como la interface tipo SkLearn.
+# metodos del ciclo evolutivo de GP, asi como la interface tipo SkLearn
 # Se implementa la logica de ejecucion para funciones de numba y CuML.
-# *********************************************************************
+# **********************************************************************
 
 from sklearn.base import BaseEstimator
 from sklearn.metrics import mean_squared_error
