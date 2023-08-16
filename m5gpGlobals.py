@@ -1,6 +1,6 @@
 # *********************************************************************
 # Name: m5gpGlobals.py
-# Description: Modulo que implementa variables y metodos globales
+# Description: Modulo que implementa variables y metodos globales.
 # para su uso comun en todos los modulos el sistema.
 # *********************************************************************
 

@@ -1,3 +1,8 @@
+# ************************************************************
+# *
+# *
+# ************************************************************
+
 from .src.m5gp import m5gp
 import pandas as pd
 
@@ -53,7 +58,7 @@ hyper_params = [
         },                                  
         ]
 
-# Create the pipeline for the model.
+# Create the pipeline for the model
 print('Running m5gp ...')
 est = m5gp.m5gpRegressor(
             generations=30, # number of generations (limited by default)
