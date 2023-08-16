@@ -53,11 +53,11 @@ hyper_params = [
         },                                  
         ]
 
-# Create the pipeline for the model
+# Create the pipeline for the model.
 print('Running m5gp ...')
 est = m5gp.m5gpRegressor(
             generations=30, # number of generations (limited by default)
-            Individuals=128, # number of individuals
+            Individuals=256, # number of individuals
             GenesIndividuals=128, # number of genes per individual
             mutationProb=0.1, # mutation rate probability
             mutationDeleteRateProb=0.01,  # mutation delete rate probality
@@ -74,11 +74,11 @@ est = m5gp.m5gpRegressor(
                         # 8=MiniBatch lasso regularization 
                         # 9=MiniBatch ridge regularization 
                         #10=MiniBatch elasticnet regularization 
-            maxRandomConstant=50, #number of constants (-maxRandomConstant to maxRandomConstant)
-            genOperatorProb=0.50, #probablity for generate Operators 
-            genVariableProb=0.39, #probablity for generate variables 
-            genConstantProb=0.10, #probablity for generate constants
-            genNoopProb=0.01, #probablity for generate NOOP Operators 
+            maxRandomConstant=999, #number of constants (-maxRandomConstant to maxRandomConstant) - 999
+            genOperatorProb=0.50, #probablity for generate Operators - 0.50
+            genVariableProb=0.39, #probablity for generate variables - 0.39 
+            genConstantProb=0.1, #probablity for generate constants - 0.1
+            genNoopProb=0.01, #probablity for generate NOOP Operators - 0.01
 			useOpIF=False, #Set if use IF operator
             log=1, #save log files
 			verbose=1, #Show menssages on execution

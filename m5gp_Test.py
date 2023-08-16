@@ -3,7 +3,7 @@ from   sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 
-#load the data
+#load the data.
 dataset = pd.DataFrame(pd.read_csv("/home/treelab/python-codes/data/Concrete/train_10107_1.txt" ,sep='\s+', header=None))
 nrows = len(dataset.index)
 nvar = dataset.shape[1] - 1

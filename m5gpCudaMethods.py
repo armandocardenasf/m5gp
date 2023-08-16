@@ -2,7 +2,7 @@
 # Name: m5gpCudaMethods.py
 # Description: Modulo que implementa las metodos para ejecutar codigo utilizando
 # nucleos de CUDA para su ejecucion en paralelo
-# Se utiliza la libreria de numba
+# Se utiliza la libreria de numba.
 # *********************************************************************
 
 from numba import cuda
