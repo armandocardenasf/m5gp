@@ -1,8 +1,3 @@
-# ************************************************************
-# *
-# *
-# ************************************************************
-
 from .src.m5gp import m5gp
 import pandas as pd
 
@@ -79,11 +74,11 @@ est = m5gp.m5gpRegressor(
                         # 8=MiniBatch lasso regularization 
                         # 9=MiniBatch ridge regularization 
                         #10=MiniBatch elasticnet regularization 
-            maxRandomConstant=999, #number of constants (-maxRandomConstant to maxRandomConstant) - 999
-            genOperatorProb=0.50, #probablity for generate Operators - 0.50
-            genVariableProb=0.39, #probablity for generate variables - 0.39 
-            genConstantProb=0.1, #probablity for generate constants - 0.1
-            genNoopProb=0.01, #probablity for generate NOOP Operators - 0.01
+            maxRandomConstant=999, #number of constants (-maxRandomConstant to maxRandomConstant)
+            genOperatorProb=0.50, #probablity for generate Operators 
+            genVariableProb=0.39, #probablity for generate variables 
+            genConstantProb=0.1, #probablity for generate constants
+            genNoopProb=0.01, #probablity for generate NOOP Operators 
 			useOpIF=False, #Set if use IF operator
             log=1, #save log files
 			verbose=1, #Show menssages on execution

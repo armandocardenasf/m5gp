@@ -1,4 +1,4 @@
-# M5GP. 
+# M5GP 
 M5GP Project
 Implementation of Genetic Programming algorithm in CUDA.
 ```

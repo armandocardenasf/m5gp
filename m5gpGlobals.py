@@ -1,12 +1,14 @@
 # *********************************************************************
 # Name: m5gpGlobals.py
-# Description: Modulo que implementa variables y metodos globales.
-# para su uso comun en todos los modulos el sistema.
+# Description: Modulo que implementa variables y metodos globales
+# para su uso comun en todos los modulos el sistema
 # *********************************************************************
 
 
 import math
+import os
 from pickle import TRUE
+import csv
 import sys
 import warnings
 import numpy as np
@@ -79,6 +81,20 @@ def pycuda_finish():
     from pycuda.tools import clear_context_caches
     clear_context_caches()
     print("Finishing up PYCUDA")
+    return
+
+def WriteCSV_OpS(nFun, elapsed,Ops, fCreate=False) :
+    return
+    nOpS = Ops / elapsed
+    fName = "M5GP_OpS.csv"
+    if fCreate == True :
+        if os.path.exists(fName):
+            os.remove(fName)
+    with open(fName, 'a', newline='') as file:
+        writer = csv.writer(file)       
+        writer.writerow([nFun, elapsed, Ops, nOpS])  
+        file.close()  
+    #print(f"{nFun} Time lapsed: {elapsed}, Ops: {Ops}, nOpS : {nOpS}")
     return
 
 def Truncate(f, n) :

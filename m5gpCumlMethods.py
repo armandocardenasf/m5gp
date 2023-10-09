@@ -1,8 +1,8 @@
 # *********************************************************************
 # Name: m5gpCumlMethods.py
 # Description: Modulo que implementa las metodos para ejecutar multiples
-# metodos de CuML.
-# Se utiliza la libreria cuml.
+# metodos de CuML
+# Se utiliza la libreria cuml
 # *********************************************************************
 
 

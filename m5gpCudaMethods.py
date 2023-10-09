@@ -1,8 +1,8 @@
 # *********************************************************************
 # Name: m5gpCudaMethods.py
 # Description: Modulo que implementa las metodos para ejecutar codigo utilizando
-# nucleos de CUDA para su ejecucion en paralelo.
-# Se utiliza la libreria de numba.
+# nucleos de CUDA para su ejecucion en paralelo
+# Se utiliza la libreria de numba
 # *********************************************************************
 
 from numba import cuda
@@ -72,6 +72,22 @@ def initialize_population (cu_states,
 		# Verificamos la probabilidad de que sea un Operador */
 		if (prob <= genOperatorProb) :
             # Es un Operador
+			#  1 = Suma
+			#  2 = Resta
+			#  3 = Multiplicacion
+			#  4 = Division
+			#  5 = Seno
+			#  6 = Coseno
+			#  7 = Exponente
+			#  8 = Logaritmo
+			#  9 = Valor Absoluto
+			# 10 = Sumatoria
+			# 11 = Producto
+			# 12 = Promedio
+			# 13 = Desviacion Standard
+			# 14 = Operador IFMAYOR
+			# 15 = Operador IFMENOR
+			# 16 = Operador IFIGUAL
 			numOp = 9 + useOpIF 
 			op1 = (xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp + 1
 			op = Truncate(op1, 0)
@@ -182,10 +198,10 @@ def compute_individuals(inputPopulation,
 	maxVar = (1000 + nvar -1) * (-1)
 
 	# Clear stack
-	for i in range(sizeMaxDepthIndividual):
-		uStack[tidSem*sizeMaxDepthIndividual +i] = 0
+	#for i in range(sizeMaxDepthIndividual):
+	#		uStack[tidSem*sizeMaxDepthIndividual +i] = 0
 
-	nTotalGenes = 0
+	#nTotalGenes = 0
 	for i in range(sizeMaxDepthIndividual) :
 		t_ = 0
 		tmp = 0
@@ -200,6 +216,7 @@ def compute_individuals(inputPopulation,
 			if (model == 1) :
 				stackModel[tidSem*sizeMaxDepthIndividual+pushModel] = inputPop
 				pushModel += 1
+			continue
 		# *************************** Es una variable ******************************
 		elif ((inputPop <= -1000) and (inputPop >= maxVar) and ((inputPop - int(inputPop)) == 0)) : # Es una variable
 			t = int(inputPop)
@@ -210,6 +227,7 @@ def compute_individuals(inputPopulation,
 			if (model == 1) :
 				stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
 				pushModel += 1	
+			continue
 		# *************************** Es un operador de suma ******************************
 		elif (inputPop == -10001) :   # Es Suma
 			if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
@@ -228,6 +246,7 @@ def compute_individuals(inputPopulation,
 				else :
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
 					pushGenes += 1
+			continue
 		# *************************** Es un operador de resta ******************************
 		elif (inputPop == -10002) :    # Es Resta
 			if(not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
@@ -245,7 +264,8 @@ def compute_individuals(inputPopulation,
 							pushModel += 1							
 				else :
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-					pushGenes += 1					
+					pushGenes += 1		
+			continue			
     	# *************************** Es un operador de multiplicacion ******************************/
 		elif (inputPop == -10003) :    # Es multiplicacion
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
@@ -263,7 +283,8 @@ def compute_individuals(inputPopulation,
 							pushModel += 1							
 				else :
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-					pushGenes += 1						
+					pushGenes += 1		
+			continue				
     	# *************************** Es un operador de division ******************************/
 		elif (inputPop == -10004) :   # Es division
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
@@ -281,7 +302,8 @@ def compute_individuals(inputPopulation,
 							pushModel += 1							
 				else :
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-					pushGenes += 1					
+					pushGenes += 1	
+			continue				
 		# *************************** Es un operador de seno ******************************/
 		elif (inputPop == -10005) :    # Es seno
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
@@ -295,7 +317,8 @@ def compute_individuals(inputPopulation,
 					pushGenes += 1						
 					if (model == 1) :
 						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-						pushModel += 1							
+						pushModel += 1		
+			continue					
 		# *************************** Es un operador de coseno ******************************/
 		elif (inputPop == -10006) :   # Es coseno
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
@@ -308,7 +331,8 @@ def compute_individuals(inputPopulation,
 					pushGenes += 1						
 					if (model == 1) :
 						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-						pushModel += 1						
+						pushModel += 1	
+			continue					
 		# *************************** Es un operador de exponente ******************************/
 		elif (inputPop == -10007) :    # Es exponente
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
@@ -324,7 +348,8 @@ def compute_individuals(inputPopulation,
 							pushModel += 1							
 					else :
 						uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-						pushGenes += 1							
+						pushGenes += 1		
+			continue					
 		# *************************** Es un operador de logaritmo ******************************/
 		elif (inputPop == -10008) :    # Es logaritmo
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
@@ -340,7 +365,8 @@ def compute_individuals(inputPopulation,
 							pushModel += 1							
 					else :
 						uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-						pushGenes += 1							
+						pushGenes += 1		
+			continue					
 		# *************************** Es un operador de absoluto ******************************/
 		elif (inputPop == -10009) :    #  Es absoluto
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
@@ -352,7 +378,8 @@ def compute_individuals(inputPopulation,
 					pushGenes += 1						
 					if (model == 1) :
 						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-						pushModel += 1						
+						pushModel += 1	
+			continue				
     	# *************************** Es una condicion de IFMAYOR ******************************/
 		elif (inputPop == -10010) :    #  Es IF MAYOR
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) : #  Verificamos que haya un primer elemento
@@ -396,7 +423,8 @@ def compute_individuals(inputPopulation,
 				else :
 					#pushGenes = push(tmp,pushGenes,uStack[tidSem*sizeMaxDepthIndividual]) 
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-					pushGenes += 1					
+					pushGenes += 1
+			continue					
 		# *************************** Es una condicion de IFMENOR ******************************/
 		elif (inputPop == -10011) : #  Es IF MENOR
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) : #  Verificamos que haya un primer elemento
@@ -438,7 +466,8 @@ def compute_individuals(inputPopulation,
 							pushGenes += 1
 				else :
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-					pushGenes += 1										
+					pushGenes += 1			
+			continue							
 		# *************************** Es una condicion de IFIGUAL ******************************/
 		elif (inputPop == -10012) : #  Es IF IGUAL
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) : #  Verificamos que haya un primer elemento
@@ -480,7 +509,8 @@ def compute_individuals(inputPopulation,
 							pushGenes += 1
 				else :
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-					pushGenes += 1										
+					pushGenes += 1		
+			continue								
 		elif (inputPop == gpG.NOOP or inputPop == -11111) : #  Es NoOP, no hacemos nada
 			#if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 			out = gpG.MAX_RMSE

@@ -1,8 +1,8 @@
 # *********************************************************************
 # Name: m5gpMod1.py
 # Description: Modulo que implementa metodos tipo wrapper para ejecutar
-# metodos CUDA y CuML a traves de llamadas comunes.
-# Se implementa la logica de ejecucion para funciones de numba y CuML.
+# metodos CUDA y CuML a traves de llamadas comunes
+# Se implementa la logica de ejecucion para funciones de numba y CuML
 # *********************************************************************
 
 import math
@@ -33,6 +33,7 @@ def initialize_population (
         genNoopProb,
         useOpIF ) :
     
+    
     MaxOcup = gpCuda.gpuMaxUseProc(numIndividuals)
     blocksize = MaxOcup["BlockSize"]
     gridsize = MaxOcup["GridSize"]
@@ -44,6 +45,7 @@ def initialize_population (
     hInitialPopulation = np.zeros((gpG.sizeMemPopulation), dtype=np.float32) 
     dInitialPopulation = cuda.to_device(hInitialPopulation)
 
+    start_time = time.time()
     gpCuda.initialize_population[blocksize, gridsize](cu_states,
                                         dInitialPopulation,
                                         numIndividuals,
@@ -55,7 +57,13 @@ def initialize_population (
                                         genConstantProb,
                                         genNoopProb,
                                         useOpIF ) 
+    elapsed = time.time() - start_time
+
     hInitialPopulation = dInitialPopulation.copy_to_host()
+
+    Ops = (numIndividuals * sizeMaxDepthIndividual)
+    gpG.WriteCSV_OpS("InitialPopulation", elapsed,Ops,True)
+ 
     return hInitialPopulation
 # -- End of Initialize population --
 
@@ -72,25 +80,26 @@ def compute_individuals(
   # Total elements of the data train matrix to form
   totalElements = nrowTrain * nvar
 
-  # Stores size in bytes of the number of individuals in the initial population
+  # Memory size of the number of individuals in the initial population
   sizeMemIndividuals = numIndividuals 
   
-  # Store the size in bytes of semantics for the entire population with training data
+  # Memory size of semantics for the entire population with training data
   sizeMemIndividualsTrain = numIndividuals * nrowTrain 
-  # Store the size in bytes the size of the training data
+
+  # Memory size of the training data
   sizeMemDataTrain = totalElements
+
   sizeMemModel = GenesIndividuals * numIndividuals * nrowTrain
   sizeMemPopulation = numIndividuals * GenesIndividuals
+  sizeMemStack = sizeMemPopulation * nrowTrain
+  sizeMemStackIdx = sizeMemIndividuals  * nrowTrain
 
   # Calculate the available memory for slide individuals blocks 
-  memStack = sizeMemPopulation * nrowTrain
-  #print("memStack:", memStack)
-  memStackIdx = sizeMemIndividuals  * nrowTrain
   memRequired = (np.dtype(float).itemsize) * (sizeMemPopulation + 
                           sizeMemIndividualsTrain + 
                           sizeMemDataTrain + 
-                          memStack + 
-                          memStackIdx + 
+                          sizeMemStack + 
+                          sizeMemStackIdx + 
                           sizeMemModel)
 
 
@@ -110,6 +119,7 @@ def compute_individuals(
   initialBlock = 0
   finalBlock = numIndividualsBlock 
  
+  #print("finalBlock:", finalBlock, " numIndividuals:", numIndividuals)
   hData = np.reshape(hData, -1)
   dDataTrain = cuda.to_device(hData)
 
@@ -119,8 +129,8 @@ def compute_individuals(
 
   hOutIndividuals = [] 
   hOutIndividualsBlock = []
-  hStack = np.zeros((memStack), dtype=np.float32)
-  hStackIdx = np.zeros((memStackIdx), dtype=np.float32)
+  hStack = np.zeros((sizeMemStack), dtype=np.float32)
+  hStackIdx = np.zeros((sizeMemStackIdx), dtype=np.float32)
   hStackModel = []
   if (getStackModel == 1):
     hStackModel = np.zeros((sizeMemModel), dtype=np.float32)
@@ -129,6 +139,13 @@ def compute_individuals(
   pBlock1 = 0
   pBlocki_ant = 0
   pBlocks_ant = 0
+
+  start_time = time.time()
+  Ops = 0
+
+  #elapsed1 = time.time() - start_time
+  #gpG.WriteCSV_OpS("compute_individuals 1 ", elapsed1,Ops)
+
   while(finalBlock <= numIndividuals) :      
     sizeMemPopulationBlock = numIndividualsBlock * GenesIndividuals
     sizeMemIndividualsBlock = numIndividualsBlock * nrowTrain
@@ -144,7 +161,12 @@ def compute_individuals(
     hOutIndividualsBlock = np.zeros((sizeMemIndividualsBlock), dtype=np.float32)   
 
     # Get initial population block for evaluate individuals
-    hInitialPopulationBlock = hInitialPopulation[(initialBlock*GenesIndividuals):(finalBlock*GenesIndividuals)]
+    if (finalBlock ==  numIndividuals and pBlock1 == 0):
+      hInitialPopulationBlock = hInitialPopulation
+      #print("Entro A")
+    else:
+      hInitialPopulationBlock = hInitialPopulation[(initialBlock*GenesIndividuals):(finalBlock*GenesIndividuals)]
+      #print("Entro B")
        
     dInitialPopulationBlock = cuda.to_device(hInitialPopulationBlock)
     dOutIndividualsBlock = cuda.to_device(hOutIndividualsBlock)   
@@ -156,6 +178,9 @@ def compute_individuals(
     blocksize = MaxOcup["BlockSize"]
     gridsize = MaxOcup["GridSize"]    
 
+    #elapsed2 = time.time() - start_time
+    #gpG.WriteCSV_OpS("compute_individuals 2 ", elapsed2,Ops)
+    
     gpCuda.compute_individuals[blocksize, gridsize](
                         dInitialPopulationBlock,
                         dOutIndividualsBlock,
@@ -169,26 +194,43 @@ def compute_individuals(
                         getStackModel,
                         dStackModelBlock
     )
-      
-    cuda.synchronize()
+    #elapsed3 = time.time() - start_time
+    #gpG.WriteCSV_OpS("compute_individuals 3 ", elapsed3,Ops)
+
+    #cuda.synchronize()
+    
+    #elapsed4 = time.time() - start_time
+    #gpG.WriteCSV_OpS("compute_individuals 4 ", elapsed4,Ops)
 
     # Return blocks from Device to host
     hOutIndividualsBlock = dOutIndividualsBlock.copy_to_host()
     hStackBlock = dStackBlock.copy_to_host()
     hStackIdxBlock = dStackIdxBlock.copy_to_host()
 
-    # Join device blocks with in one local block 
-    hOutIndividuals = np.hstack((hOutIndividuals, hOutIndividualsBlock))
-    pBlocki = pBlocki_ant + hStackIdxBlock.shape[0]
-    hStackIdx[pBlocki_ant:pBlocki] = hStackIdxBlock   
-    pBlocki_ant = pBlocki
+    #elapsed5 = time.time() - start_time
+    #gpG.WriteCSV_OpS("compute_individuals 5 ", elapsed5,Ops)
 
-    pBlocks = pBlocks_ant + hStackBlock.shape[0]
-    hStack[pBlocks_ant:pBlocks] = hStackBlock
-    pBlocks_ant = pBlocks
+    if (finalBlock >= numIndividuals and pBlock1 == 0) :
+      hOutIndividuals = hOutIndividualsBlock
+      hStackIdx = hStackIdxBlock
+      hStack = hStackBlock
+      #print("Entro 1")
+    else :
+      # Join device blocks with in one local block 
+      hOutIndividuals = np.hstack((hOutIndividuals, hOutIndividualsBlock))
+      pBlocki = pBlocki_ant + hStackIdxBlock.shape[0]
+      hStackIdx[pBlocki_ant:pBlocki] = hStackIdxBlock   
+      pBlocki_ant = pBlocki
+
+      pBlocks = pBlocks_ant + hStackBlock.shape[0]
+      hStack[pBlocks_ant:pBlocks] = hStackBlock
+      pBlocks_ant = pBlocks
+      #print("Entro 2")
 
     pBlock1 = pBlock1 + 1
 
+    #elapsed6 = time.time() - start_time
+    #gpG.WriteCSV_OpS("compute_individuals 6 ", elapsed6,Ops)
         
     if (finalBlock >= numIndividuals) :
       break
@@ -199,6 +241,10 @@ def compute_individuals(
       numIndividualsBlock = numIndividuals - initialBlock
       finalBlock = numIndividuals
   # End while
+
+  elapsed = time.time() - start_time
+  Ops = (numIndividuals  * nrowTrain * GenesIndividuals)
+  gpG.WriteCSV_OpS("compute_individuals (" + str(pBlock1) + ")", elapsed,Ops)
 
   del hStackModelBlock
   #Free local memory 
@@ -243,8 +289,11 @@ def ComputeError(self,
     MaxOcup = gpCuda.gpuMaxUseProc(numIndividuals)
     blocksize = MaxOcup["BlockSize"]
     gridsize = MaxOcup["GridSize"] 
+
+    start_time = time.time()
+
     if evaluationMethod == 0 :  #0=RMSE
-        print("RMSE")
+        #print("RMSE")
         gpCuda.computeRMSE[blocksize, gridsize](
                         dOutIndividuals, 
                         dDataY, 
@@ -290,15 +339,15 @@ def ComputeError(self,
         evaluationMethod == 9 or #M4GP - 9=cuML MiniBatch ridge regularization
         evaluationMethod == 10) : #M4GP - 10=cuML MiniBatch elasticnet regularization
 
-        start_time = time.time()
+        #start_time = time.time()
         coefArr = []
         intercepArr = []
         cuModel = []
 
         hFit, cuModel, coefArr, intercepArr = gpCuM.EvaluateCuml2(self, hStack, hStackIdx, hFit, hDataY)
 
-        elapsed = time.strftime("%H:%M:%S", time.gmtime(time.time() - start_time))
-        print(f"Time cuML lapsed: {elapsed}")
+        #elapsed = time.strftime("%H:%M:%S", time.gmtime(time.time() - start_time))
+        #print(f"Time cuML lapsed: {elapsed}")
   
         dFit = cuda.to_device(hFit)
         if (self.scorer==0) or (self.scorer==1):
@@ -322,6 +371,10 @@ def ComputeError(self,
      
     # end if (Evaluation methods)
 
+    elapsed = time.time() - start_time
+    Ops = (numIndividuals * nrowTrain)
+    gpG.WriteCSV_OpS("compute_error", elapsed,Ops)    
+ 
     return hFit, indexBestOffspring,  indexWorstOffspring, coefArr_p, intercepArr_p, cuModel_p
 # *************************  End of Evaluate Individuals  **************************
 
@@ -350,6 +403,7 @@ def select_tournament(
 
     dFit = cuda.to_device(hFit)
 
+    start_time = time.time()
     gpCuda.parent_select_tournament[blocksize, gridsize](cu_states,
                               dNewPopulation,
                               dInitialPopulation,
@@ -358,6 +412,10 @@ def select_tournament(
                               gpG.sizeTournament,
                               numIndividuals,
                               GenesIndividuals   )
+
+    elapsed = time.time() - start_time
+    Ops = (numIndividuals * gpG.sizeTournament) 
+    gpG.WriteCSV_OpS("tournament("+str(gpG.sizeTournament)+")", elapsed,Ops)  
 
     hNewPopulation = dNewPopulation.copy_to_host()
     hBestParentsTournament = dBestParentsTournament.copy_to_host()   
@@ -384,6 +442,7 @@ def umadMutation(self,
     dInitialPopulation = cuda.to_device(hInitialPopulation)
     dBestParentsTournament = cuda.to_device(hBestParentsTournament)
 
+    start_time = time.time()
     gpCuda.umadMutation[blocksize, gridsize](cu_states,
                         dNewPopulation,
                         dInitialPopulation,
@@ -400,7 +459,11 @@ def umadMutation(self,
                         self.genConstantProb,
                         self.genNoopProb,
                         self.useOpIF)
-    
+
+    elapsed = time.time() - start_time
+    Ops = (numIndividuals * self.GenesIndividuals) 
+    gpG.WriteCSV_OpS("umadMutation", elapsed,Ops) 
+
     hNewPopulation = dNewPopulation.copy_to_host()
   
     return hNewPopulation

@@ -1,14 +1,11 @@
-# *
-# *
-# *
-
 from m5gp import m5gpRegressor as m5gp
 from   sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 
 #load the data
-dataset = pd.DataFrame(pd.read_csv("/home/treelab/python-codes/data/Concrete/train_10107_1.txt" ,sep='\s+', header=None))
+#dataset = pd.DataFrame(pd.read_csv("/home/treelab/python-codes/data/Concrete/train_10107_1.txt" ,sep='\s+', header=None))
+dataset = pd.DataFrame(pd.read_csv("/home/treelab/srbench1/pmlb/datasets5/589_fri_c2_1000_25/589_fri_c2_1000_25.tsv" ,sep='\s+', header=None))
 nrows = len(dataset.index)
 nvar = dataset.shape[1] - 1
 #print("Leyo X")
@@ -24,12 +21,12 @@ y_train = dataset.iloc[:nrows, nvar-1].to_numpy().astype(np.float32)
 print('Running m5gp ...')
  
 est = m5gp(
-            generations=5, # number of generations (limited by default)
-            Individuals=10, # number of individuals
-            GenesIndividuals=9, #number of genes per individual
-            mutationProb=0.10, #mutation rate probability
-            mutationDeleteRateProb=0.01,  #mutation delete rate probality
-            sizeTournament=0.15, #size of tournament
+            generations=30, # number of generations (limited by default)
+            Individuals=256, # number of individuals
+            GenesIndividuals=128, # number of genes per individual
+            mutationProb=0.1, # mutation rate probability
+            mutationDeleteRateProb=0.01,  # mutation delete rate probality
+            sizeTournament=0.15, # size of tournament
             evaluationMethod=0,  #error evaluation method 
                         # 0=RMSE, 
                         # 1=R2, 
@@ -42,13 +39,10 @@ est = m5gp(
                         # 8=MiniBatch lasso regularization 
                         # 9=MiniBatch ridge regularization 
                         #10=MiniBatch elasticnet regularization 
-            scorer=0,   # Evaluation Fit/Predict method when using cuML 
-                        # 0 = RMSE
-                        # 1 = R2                        
-            maxRandomConstant=80, #number of constants
-            genOperatorProb=0.42, #probablity for generate Operators 
-            genVariableProb=0.55, #probablity for generate variables 
-            genConstantProb=0.02, #probablity for generate constants
+            maxRandomConstant=999, #number of constants (-maxRandomConstant to maxRandomConstant)
+            genOperatorProb=0.50, #probablity for generate Operators 
+            genVariableProb=0.39, #probablity for generate variables 
+            genConstantProb=0.1, #probablity for generate constants
             genNoopProb=0.01, #probablity for generate NOOP Operators 
 			useOpIF=False, #Set if use IF operator
             log=1, #save log files

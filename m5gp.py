@@ -2,7 +2,7 @@
 # Name: m5gp.py
 # Description: Modulo principal del sistema que implementa los
 # metodos del ciclo evolutivo de GP, asi como la interface tipo SkLearn
-# Se implementa la logica de ejecucion para funciones de numba y CuML.
+# Se implementa la logica de ejecucion para funciones de numba y CuML
 # *********************************************************************
 
 from sklearn.base import BaseEstimator
@@ -90,7 +90,10 @@ class m5gpRegressor(BaseEstimator):
     print("Free Memory: ", gpG.free_mem)
     gpG.pycuda_finish()
 
-
+    fName = "M5GP_OpS.csv"
+    if os.path.exists(fName):
+        os.remove(fName)
+    return
 
   #This method implement the evolution with M5GP  
   def fit(self, X_train, y_train):
@@ -127,7 +130,6 @@ class m5gpRegressor(BaseEstimator):
                               self.genConstantProb,
                               self.genNoopProb,
                               self.useOpIF )
-   
     # -- End of Initialize population --
 
     # ***************************  Compute Individuals  ****************************
