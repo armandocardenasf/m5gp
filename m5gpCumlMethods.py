@@ -90,6 +90,7 @@ def createCumlMethod(mFitness) :
     rPenalty = 'none'
     if mFitness == 2 :
         slr = LinearRegression(fit_intercept = True, 
+                               copy_X = True,
                                normalize = False, 
                                algorithm = "svd" # algorithm{‘svd’, ‘eig’, ‘qr’, ‘svd-qr’, ‘svd-jacobi’}, (default = ‘eig’)
                                ) 

@@ -119,6 +119,7 @@ class m5gpRegressor(BaseEstimator):
     # Define vectors to work on device 
     self.model = np.zeros((self.GenesIndividuals ), dtype=np.float32) 
 
+    print("Initialize Individual")
     # *************************** Initialize population ********************************* 
     hInitialPopulation = gp2.initialize_population(
                               self.Individuals,
@@ -138,6 +139,7 @@ class m5gpRegressor(BaseEstimator):
     hStackIdx = []
     hStackModel = []
   
+    print ("Compute Individual")
     hOutIndividuals, hStack, hStackIdx, hStackModel = gp2.compute_individuals(
             hInitialPopulation,
             X_train,
@@ -164,6 +166,7 @@ class m5gpRegressor(BaseEstimator):
     indexWorstOffspring = 0
 
 
+    print("Compute Error")
     # ***************************** Compute ERROR ***********************************
     hFit, indexBestOffspring, indexWorstOffspring, coefArr_p, intercepArr_p, cuModel_p = gp2.ComputeError(self,
                 hOutIndividuals, 
@@ -200,6 +203,7 @@ class m5gpRegressor(BaseEstimator):
       stackBestModelNew = []
       start_time = time.time()
 
+      print("Torneo")
       # *********************  Select Tournament  **********************
       hNewPopulation, hBestParentsTournament = gp2.select_tournament(
                     hInitialPopulation,
@@ -207,6 +211,7 @@ class m5gpRegressor(BaseEstimator):
                     self.Individuals, 
                     self.GenesIndividuals )
 
+      print("Mutacion")
       # *********************  UMAD Mutation  **********************
       hNewPopulation = gp2.umadMutation(self,
                                   hInitialPopulation,

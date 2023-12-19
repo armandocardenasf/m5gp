@@ -31,8 +31,26 @@ from queue import LifoQueue
 import pycuda.driver as pycuda
 from pycuda.tools import make_default_context, DeviceMemoryPool, clear_context_caches
 
+OP_INI = -10000
+OP_ADD = -10001
+OP_SUB = -10002
+OP_MUL = -10003
+OP_DIV = -10004
+OP_SIN = -10005
+OP_COS = -10006
+OP_EXP = -10007
+OP_LOG = -10008
+OP_ABS = -10009
+OP_SUM = -10010 
+OP_PRD = -10011
+OP_PRM = -10012
+OP_DVS = -10013
+OP_IFG = -10014
+OP_IFL = -10015
+OP_IFE = -10016
+OP_FIN = -11111
+OP_NOOP = -10099
 
-NOOP = -10013
 PI = 3.14159265
 
 MAX_R2_NEG  = -5000
@@ -120,7 +138,7 @@ def bestIndividualInfo(config,
     for i in range(config.GenesIndividuals):
         gene = dInitialPopulation[indexBestIndividual_p * config.GenesIndividuals + i];
 
-        if (gene != NOOP) :
+        if (gene != OP_NOOP):
             BestIndividualLength =  BestIndividualLength + 1
         # if (gene == NOOP) :
         #     numOpNOOP = numOpNOOP + 1
@@ -189,9 +207,9 @@ def getIndividualExpr(config,
     for i in range(config.GenesIndividuals):
         gene = dInitialPopulation[indexBestIndividual_p * config.GenesIndividuals + i];
 
-        if (gene != NOOP) :
+        if (gene != OP_NOOP) :
             BestIndividualLength =  BestIndividualLength + 1
-        elif (gene == NOOP) :
+        elif (gene == OP_NOOP) :
             numOpNOOP = numOpNOOP + 1
         elif (gene == -10001) :
             numOps = numOps + 1
@@ -352,7 +370,7 @@ def getModelExpr(config, Model) :
                     stackModel.put(tmpExpr)
                 #end if
             # End if
-        elif (gene == NOOP) :  # Es NoOP, no hacemos nada
+        elif (gene == OP_NOOP) :  # Es NoOP, no hacemos nada
             if (not stackModel.empty()) :
                 g1 = 0
             # End if
@@ -446,7 +464,7 @@ def m4gpModel(config, Model, Coef, Intercep) :
                 tmpArr.append(gene)
                 stackModel.put(tmpArr)
             # End if
-        elif (gene == NOOP) :  # Es NoOP, no hacemos nada
+        elif (gene == OP_NOOP) :  # Es NoOP, no hacemos nada
             if (not stackModel.empty()) :
                 g1 = g1
             # End if

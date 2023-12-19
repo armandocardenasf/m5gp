@@ -17,17 +17,20 @@ import numpy as np
 import m5gpGlobals as gpG
 
 def gpuMaxUseProc(Individuals) :
-	blocksize = 0
-	gridsize = 2147483647
+	blocksize = 1
+	#gridsize = 2147483647
     
+	gridsize=(Individuals + blocksize-1) // blocksize
 	while(gridsize > 1024) :
+		if  (blocksize == 1):
+			blocksize = 0
 		blocksize = blocksize + 32
 		gridsize=(Individuals + blocksize-1) // blocksize
 		
 	MaxOcup = {}
-	MaxOcup["BlockSize"] = blocksize
-	MaxOcup["GridSize"] = gridsize	
-	
+	MaxOcup["BlockSize"] = gridsize
+	MaxOcup["GridSize"] = blocksize	
+
 	return MaxOcup
 
 @cuda.jit()
@@ -65,7 +68,7 @@ def initialize_population (cu_states,
 		return
 	
 	for j in range(sizeMaxDepthIndividual) :
-		gene = gpG.NOOP
+		gene = gpG.OP_NOOP
 		# Obtenemos operador o (variable/constante) o NOOP */
 		prob = xoroshiro128p_uniform_float32(cu_states, tid)
 	    
@@ -81,31 +84,37 @@ def initialize_population (cu_states,
 			#  7 = Exponente
 			#  8 = Logaritmo
 			#  9 = Valor Absoluto
-			# 10 = Sumatoria
-			# 11 = Producto
-			# 12 = Promedio
-			# 13 = Desviacion Standard
+			# 10 = Sumatoria (*)
+			# 11 = Producto (*)
+			# 12 = Promedio (*)
+			# 13 = Desviacion Standard (*)
+			# ***************************************************************
+			# Si hay nuevos operadores/funciones, ponerlas en este espacio,
+			# entre el ultimo operador agregado y los IF. Los IF incrementan
+			# su valor.
+			# ***************************************************************
 			# 14 = Operador IFMAYOR
 			# 15 = Operador IFMENOR
 			# 16 = Operador IFIGUAL
-			numOp = 9 + useOpIF 
+			# 99 = NOOP
+			numOp = gpG.OP_IFG + useOpIF - 1
 			op1 = (xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp + 1
 			op = Truncate(op1, 0)
-			if (op == 10 and useOpIF == 1) :   # Fue un IF
+			if (op == gpG.OP_IFG and useOpIF == 1) :   # Fue un IF
                 # Fue un IF, obtenemos la condicion de manera aleatoria
 				cond = (xoroshiro128p_normal_float64(cu_states, tid)*1000) % 3 + 1
 				cond = Truncate(cond, 0)
 				if (cond == 1) : # IFMAYOR
-					op = 10
+					op = gpG.OP_IFG 
 				elif (cond == 2) : # IFMENOR
-					op = 11
+					op = gpG.OP_IFL
 				elif (cond == 3) : # IFIGUAL
-					op = 12
+					op = gpG.OP_IFE
 				else :
-					op = gpG.NOOP # 13 - NOOP
+					op = gpG.OP_NOOP # 13 - NOOP
             #Fin de If
 
-			gene = ((op + 10000) * (-1))
+			gene = ((op * (-1)) + gpG.OP_INI)
 		elif ((prob > genOperatorProb) and (prob <= (genVariableProb+genOperatorProb))) :
             # Obtenemos la probabilidad de que sea una variable */
 			gene = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % (nvar)+1000) * (-1)
@@ -120,9 +129,10 @@ def initialize_population (cu_states,
 				gene = gene * (-1)         
 		else :
             # Obtenemos la probabilidad de que sea un Operador NOOP */
-			gene = gpG.NOOP 	# Obtenemos la probabilidad de que sea un Operador NOOP */
+			gene = gpG.OP_NOOP 	# Obtenemos la probabilidad de que sea un Operador NOOP */
 
 		dInitialPopulation[tid*sizeMaxDepthIndividual+j] = gene
+	# Fin del FOR
 	return
 
 @cuda.jit(device=True)
@@ -229,7 +239,7 @@ def compute_individuals(inputPopulation,
 				pushModel += 1	
 			continue
 		# *************************** Es un operador de suma ******************************
-		elif (inputPop == -10001) :   # Es Suma
+		elif (inputPop == gpG.OP_ADD) :   # Es Suma
 			if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
@@ -248,7 +258,7 @@ def compute_individuals(inputPopulation,
 					pushGenes += 1
 			continue
 		# *************************** Es un operador de resta ******************************
-		elif (inputPop == -10002) :    # Es Resta
+		elif (inputPop == gpG.OP_SUB) :    # Es Resta
 			if(not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
@@ -267,7 +277,7 @@ def compute_individuals(inputPopulation,
 					pushGenes += 1		
 			continue			
     	# *************************** Es un operador de multiplicacion ******************************/
-		elif (inputPop == -10003) :    # Es multiplicacion
+		elif (inputPop == gpG.OP_MUL) :    # Es multiplicacion
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
@@ -286,7 +296,7 @@ def compute_individuals(inputPopulation,
 					pushGenes += 1		
 			continue				
     	# *************************** Es un operador de division ******************************/
-		elif (inputPop == -10004) :   # Es division
+		elif (inputPop == gpG.OP_DIV) :   # Es division
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
@@ -305,7 +315,7 @@ def compute_individuals(inputPopulation,
 					pushGenes += 1	
 			continue				
 		# *************************** Es un operador de seno ******************************/
-		elif (inputPop == -10005) :    # Es seno
+		elif (inputPop == gpG.OP_SIN) :    # Es seno
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				#tmp = pop(pushGenes,uStack[tidSem*sizeMaxDepthIndividual])
 				pushGenes -=  1
@@ -320,7 +330,7 @@ def compute_individuals(inputPopulation,
 						pushModel += 1		
 			continue					
 		# *************************** Es un operador de coseno ******************************/
-		elif (inputPop == -10006) :   # Es coseno
+		elif (inputPop == gpG.OP_COS) :   # Es coseno
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
@@ -334,7 +344,7 @@ def compute_individuals(inputPopulation,
 						pushModel += 1	
 			continue					
 		# *************************** Es un operador de exponente ******************************/
-		elif (inputPop == -10007) :    # Es exponente
+		elif (inputPop == gpG.OP_EXP) :    # Es exponente
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
@@ -351,7 +361,7 @@ def compute_individuals(inputPopulation,
 						pushGenes += 1		
 			continue					
 		# *************************** Es un operador de logaritmo ******************************/
-		elif (inputPop == -10008) :    # Es logaritmo
+		elif (inputPop == gpG.OP_LOG) :    # Es logaritmo
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
@@ -368,7 +378,7 @@ def compute_individuals(inputPopulation,
 						pushGenes += 1		
 			continue					
 		# *************************** Es un operador de absoluto ******************************/
-		elif (inputPop == -10009) :    #  Es absoluto
+		elif (inputPop == gpG.OP_ABS) :    #  Es absoluto
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]		
@@ -379,9 +389,75 @@ def compute_individuals(inputPopulation,
 					if (model == 1) :
 						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
 						pushModel += 1	
-			continue				
+			continue	
+		# *************************** Es un operador de SUMATORIA ******************************/
+		elif (inputPop == gpG.OP_SUM) :  
+			if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
+				pushGenes -=  1
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
+				if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
+					pushGenes -=  1
+					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]					
+					if (not math.isnan(tmp) and not math.isinf(tmp) and not math.isnan(tmp2) and not math.isinf(tmp2)) :
+						out = tmp + tmp2
+						uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+						pushGenes += 1
+						if (model == 1) :
+							stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+							pushModel += 1
+				else :
+					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
+					pushGenes += 1
+
+
+			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
+				out = 0
+				pushGenes -=  1
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
+				if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
+					pushGenes -=  1
+					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]						
+					if (not math.isnan(tmp) and not math.isinf(tmp) and not math.isnan(tmp2) and not math.isinf(tmp2)) :					
+						out = tmp + tmp2
+						while (pushGenes > 0):					
+							pushGenes -=  1
+							tmp3 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]						
+							out += tmp3
+				else :
+					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
+					pushGenes += 1
+
+				while (pushGenes > 0):
+					if (not math.isnan(tmp) and not math.isinf(tmp)) :
+						out += tmp
+				#End of while
+
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1						
+				
+
+			continue
+		# *************************** Es un operador de PRODUCTO ******************************/
+		elif (inputPop == gpG.OP_PRD) :  
+			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
+				out = 0
+
+			continue
+		# *************************** Es un operador de PROMEDIO ******************************/
+		elif (inputPop == gpG.OP_PRM) :  
+			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
+				out = 0
+
+			continue
+		# *************************** Es un operador de DESV ESTANDARD ************************/
+		elif (inputPop == gpG.OP_DVS) :  
+			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
+				out = 0
+
+			continue
+
     	# *************************** Es una condicion de IFMAYOR ******************************/
-		elif (inputPop == -10010) :    #  Es IF MAYOR
+		elif (inputPop == gpG.OP_IFG) :    #  Es IF MAYOR
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) : #  Verificamos que haya un primer elemento
 				# Si hay, sacamos el primer elemento
 				pushGenes -=  1
@@ -426,7 +502,7 @@ def compute_individuals(inputPopulation,
 					pushGenes += 1
 			continue					
 		# *************************** Es una condicion de IFMENOR ******************************/
-		elif (inputPop == -10011) : #  Es IF MENOR
+		elif (inputPop == gpG.OP_IFL) : #  Es IF MENOR
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) : #  Verificamos que haya un primer elemento
 				# Si hay, sacamos el primer elemento
 				pushGenes -=  1
@@ -469,7 +545,7 @@ def compute_individuals(inputPopulation,
 					pushGenes += 1			
 			continue							
 		# *************************** Es una condicion de IFIGUAL ******************************/
-		elif (inputPop == -10012) : #  Es IF IGUAL
+		elif (inputPop == gpG.OP_IFE) : #  Es IF IGUAL
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) : #  Verificamos que haya un primer elemento
 				# Si hay, sacamos el primer elemento
 				pushGenes -=  1
@@ -511,7 +587,7 @@ def compute_individuals(inputPopulation,
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
 					pushGenes += 1		
 			continue								
-		elif (inputPop == gpG.NOOP or inputPop == -11111) : #  Es NoOP, no hacemos nada
+		elif (inputPop == gpG.OP_NOOP or inputPop == gpG.OP_FIN) : #  Es NoOP, no hacemos nada
 			#if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 			out = gpG.MAX_RMSE
 			#if (inputPop == -11111)	:
@@ -535,7 +611,7 @@ def compute_individuals(inputPopulation,
 	uStackIdx[tidSem] = pushGenes
 
 	if (model == 1 and pushModel < sizeMaxDepthIndividual) :
-		stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= -11111
+		stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= gpG.OP_FIN
 		pushModel += 1	
 
 	#if (model == 0) :
@@ -707,38 +783,37 @@ def umadMutation(cu_states,  # states
 		if (prob1 <= additionRate) :
 			# Cae en la probabilidad de ser modificado
 			# Obtenemos un nuevo gen, el actual gen es modificado
-			gene = gpG.NOOP
+			gene = gpG.OP_NOOP
 
 			# Obtenemos operador o (variable/constante) o NOOP */
 			#prob = curand_uniform(state[tid])       
 			prob = xoroshiro128p_uniform_float32(cu_states, tid)
 
-
 			if (prob <= genOperatorProb) :
 			# Obtenemos la probabilidad de que sea un Operador */
 				# Es un Operador
-				numOp = 9 + useOpIF 
+				numOp = gpG.OP_IFG + useOpIF - 1
 				#op = curand(state[tid]) % numOp + 1 
 				op = (xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp + 1
 				op = Truncate(op, 0)
 
-				if (op == 10 and useOpIF == 1) :   # Fue un IF
+				if (op == gpG.OP_IFG and useOpIF == 1) :   # Fue un IF
 					# Fue un IF, obtenemos la condicion de manera aleatoria
 					#cond = curand(state[tid]) % 3 + 1 
 					cond = (xoroshiro128p_normal_float64(cu_states, tid)*1000) % 3 + 1
 					cond = Truncate(cond, 0)
 
 					if (cond == 1) : # IFMAYOR
-						op = 10
+						op = gpG.OP_IFG
 					elif (cond == 2) : # IFMENOR
-						op = 11
+						op = gpG.OP_IFL
 					elif (cond == 3) : # IFIGUAL
-						op = 12
+						op = gpG.OP_IFE
 					else :
-						op = gpG.NOOP # 13 - NOOP
+						op = gpG.OP_NOOP # 13 - NOOP
 				#Fin de If
 
-				gene = ((op + 10000) * (-1))
+				gene = ((op * (-1)) + gpG.OP_INI)
 			elif ((prob > genOperatorProb) and (prob <= (genVariableProb+genOperatorProb))) :
 				# Obtenemos la probabilidad de que sea una variable */
 				#gene = (curand(state[tid]) % nvar+1000)*(float)(-1)
@@ -758,7 +833,7 @@ def umadMutation(cu_states,  # states
 				
 			else :
 				# Obtenemos la probabilidad de que sea un Operador NOOP */
-				gene = gpG.NOOP 	# Obtenemos la probabilidad de que sea un Operador NOOP */
+				gene = gpG.OP_NOOP 	# Obtenemos la probabilidad de que sea un Operador NOOP */
 			
 			g_Population[tid * sizeMaxDepthIndividual + j] = gene
 
@@ -771,7 +846,7 @@ def umadMutation(cu_states,  # states
 
 		if (prob2 <= deletionRate) :
 			# Cae en la probabilidad de ser eliminado (NOOP)
-			g_Population[tid * sizeMaxDepthIndividual + j] = int(gpG.NOOP)
+			g_Population[tid * sizeMaxDepthIndividual + j] = int(gpG.OP_NOOP)
 	# Fin de for
 	return
 

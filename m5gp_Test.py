@@ -27,7 +27,7 @@ est = m5gp(
             mutationProb=0.1, # mutation rate probability
             mutationDeleteRateProb=0.01,  # mutation delete rate probality
             sizeTournament=0.15, # size of tournament
-            evaluationMethod=0,  #error evaluation method 
+            evaluationMethod=2,  #error evaluation method 
                         # 0=RMSE, 
                         # 1=R2, 
                         #cuML Methods

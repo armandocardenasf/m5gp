@@ -46,6 +46,11 @@ def initialize_population (
     dInitialPopulation = cuda.to_device(hInitialPopulation)
 
     start_time = time.time()
+    
+    #threadsperblock = 32
+    #blockspergrid = (an_array.size + (threadsperblock - 1)) // threadsperblock
+    #increment_by_one[blockspergrid, threadsperblock](an_array)
+
     gpCuda.initialize_population[blocksize, gridsize](cu_states,
                                         dInitialPopulation,
                                         numIndividuals,
@@ -395,7 +400,7 @@ def select_tournament(
        
 
     hNewPopulation  = np.zeros((gpG.sizeMemPopulation), dtype=np.float32) 
-    hBestParentsTournament = np.zeros((gpG.sizeMemIndividuals), dtype=np.int)
+    hBestParentsTournament = np.zeros((gpG.sizeMemIndividuals), dtype=np.int32)
 
     dBestParentsTournament = cuda.to_device(hBestParentsTournament)
     dInitialPopulation = cuda.to_device(hInitialPopulation)
