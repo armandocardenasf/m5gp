@@ -2,7 +2,7 @@
 # Name: m5gpCudaMethods.py
 # Description: Modulo que implementa las metodos para ejecutar codigo utilizando
 # nucleos de CUDA para su ejecucion en paralelo
-# Se utiliza la libreria de numba
+# Se utiliza la libreria de numba.
 # *********************************************************************
 
 from numba import cuda
@@ -97,7 +97,7 @@ def initialize_population (cu_states,
 			# 15 = Operador IFMENOR
 			# 16 = Operador IFIGUAL
 			# 99 = NOOP
-			
+
 			numOp = gpG.OP_IFG + useOpIF - 1
 			op1 = (xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp + 1
 			op = Truncate(op1, 0)

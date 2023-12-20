@@ -2,7 +2,7 @@
 # Name: m5gpMod1.py
 # Description: Modulo que implementa metodos tipo wrapper para ejecutar
 # metodos CUDA y CuML a traves de llamadas comunes
-# Se implementa la logica de ejecucion para funciones de numba y CuML
+# Se implementa la logica de ejecucion para funciones de numba y CuML.
 # *********************************************************************
 
 import math
