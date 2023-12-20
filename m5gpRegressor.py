@@ -51,7 +51,7 @@ hyper_params = [
             'mutationProb' : (0.1,),
             'sizeTournament' : (0.15,),
         },                                  
-        ]
+    ]
 
 # Create the pipeline for the model
 print('Running m5gp ...')

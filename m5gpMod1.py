@@ -6,11 +6,10 @@
 # *********************************************************************
 
 import math
-import numpy as np
-
 import time
 import gc
 
+import numpy as np
 import cupy as cp
 
 from numba import cuda

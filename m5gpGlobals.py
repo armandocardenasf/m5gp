@@ -66,7 +66,6 @@ global sizeMemPopulation
 global sizeMemIndividuals 
 global sizeTournament
 
-
 def pycudasetup(gpu_device_number=0):
     try:
         pycuda.init()
