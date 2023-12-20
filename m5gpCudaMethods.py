@@ -4,7 +4,7 @@
 # nucleos de CUDA para su ejecucion en paralelo
 # Se utiliza la libreria de numba.
 # *********************************************************************
-
+ 
 from numba import cuda
 from numba import njit, literal_unroll
 from numba.cuda.random import (create_xoroshiro128p_states,

@@ -4,7 +4,7 @@
 # metodos de CuML
 # Se utiliza la libreria cuml.
 # *********************************************************************
-
+ 
 import math
 import copy
 import cupy as cp

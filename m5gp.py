@@ -527,4 +527,5 @@ class m5gpRegressor(BaseEstimator):
   def rmse(self, cY, YPred) :
     mse = self.meanSquaredError(cY, YPred) 
     mse = math.sqrt(mse)
-    return mse		
+    return mse
+   		
