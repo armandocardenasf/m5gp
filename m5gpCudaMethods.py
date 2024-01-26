@@ -44,6 +44,10 @@ def Truncate(f, n) :
 		T = T * (-1)
 	return T
 
+@cuda.jit(nopython=True)
+def empty():
+    return np.empty(5, np.float64)  # np.float64 instead of np.float
+
 @cuda.jit()
 def initialize_population (cu_states,
         dInitialPopulation,
@@ -393,70 +397,143 @@ def compute_individuals(inputPopulation,
 			continue	
 		# *************************** Es un operador de SUMATORIA ******************************/
 		elif (inputPop == gpG.OP_SUM) :  
+			cont = 0
+			out = 0
 			if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
 				pushGenes -=  1
-				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
-				if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
-					pushGenes -=  1
-					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]					
-					if (not math.isnan(tmp) and not math.isinf(tmp) and not math.isnan(tmp2) and not math.isinf(tmp2)) :
-						out = tmp + tmp2
-						uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
-						pushGenes += 1
-						if (model == 1) :
-							stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-							pushModel += 1
-				else :
-					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-					pushGenes += 1
-
-
-			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
-				out = 0
+				cont = 1
+				#Jalamos un primer elemento del stack
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
-				if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
-					pushGenes -=  1
-					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]						
-					if (not math.isnan(tmp) and not math.isinf(tmp) and not math.isnan(tmp2) and not math.isinf(tmp2)) :					
-						out = tmp + tmp2
-						while (pushGenes > 0):					
-							pushGenes -=  1
-							tmp3 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]						
-							out += tmp3
-				else :
-					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-					pushGenes += 1
-
+				if (not math.isnan(tmp) and not math.isinf(tmp)) :
+					out = tmp
 				while (pushGenes > 0):
+					#Jalamos un siguiente elemento del stack si hay
+					pushGenes -=  1
+					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
 					if (not math.isnan(tmp) and not math.isinf(tmp)) :
-						out += tmp
-				#End of while
+						# Haz la sumatoria
+						out += tmp2
+						cont += 1
+				# Fin del While
+						
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1	
+				#Fin del if
 
 				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
-				pushGenes += 1						
-				
-
+				pushGenes += 1					
+			# Fin del if
 			continue
 		# *************************** Es un operador de PRODUCTO ******************************/
 		elif (inputPop == gpG.OP_PRD) :  
-			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
-				out = 0
+			cont = 0
+			out = 0
+			if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
+				pushGenes -=  1
+				cont = 1
+				#Jalamos un primer elemento del stack
+				pushGenes -=  1
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
+				if (not math.isnan(tmp) and not math.isinf(tmp)) :
+					out = tmp
+				while (pushGenes > 0):
+					#Jalamos un siguiente elemento del stack si hay
+					pushGenes -=  1
+					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
+					if (not math.isnan(tmp) and not math.isinf(tmp)) :
+						# Haz el producto
+						out *= tmp2
+						cont += 1
+				# Fin del While
+						
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1	
+				#Fin del if
 
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1					
+			# Fin del if
 			continue
 		# *************************** Es un operador de PROMEDIO ******************************/
 		elif (inputPop == gpG.OP_PRM) :  
-			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
-				out = 0
+			cont = 0
+			out = 0
+			if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
+				pushGenes -=  1
+				cont = 1
+				#Jalamos un primer elemento del stack
+				pushGenes -=  1
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
+				if (not math.isnan(tmp) and not math.isinf(tmp)) :
+					out = tmp
+				while (pushGenes > 0):
+					#Jalamos un siguiente elemento del stack si hay
+					pushGenes -=  1
+					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
+					if (not math.isnan(tmp) and not math.isinf(tmp)) :
+						# Haz la sumatoria
+						out += tmp2
+						cont += 1
+				# Fin del While
+						
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1	
+				#Fin del if
+
+				#Sacamos el promedio
+				out = out / cont
+
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1					
+			# Fin del if
 
 			continue
 		# *************************** Es un operador de DESV ESTANDARD ************************/
 		elif (inputPop == gpG.OP_DVS) :  
-			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
-				out = 0
+			cont = 0
+			out = 0
+			#arr = []
+			arr = np.array([], np.float64) 
+			if (not isEmpty(pushGenes, sizeMaxDepthIndividual)) :
+				pushGenes -=  1
+				cont = 1
+				#Jalamos un primer elemento del stack
+				pushGenes -=  1
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
+				if (not math.isnan(tmp) and not math.isinf(tmp)) :
+					out = tmp
+					arr = np.append(arr, tmp)
+				while (pushGenes > 0):
+					#Jalamos un siguiente elemento del stack si hay
+					pushGenes -=  1
+					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
+					if (not math.isnan(tmp) and not math.isinf(tmp)) :
+						# Haz la sumatoria
+						out += tmp2
+						cont += 1
+						arr = np.append(arr, tmp2)
+				# Fin del While
+						
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1	
+				#Fin del if
 
+				#Sacamos la desviacion standard
+				prom = out / cont
+				s0 = 0
+				for ds in arr:
+					s1 = math.fabs((ds - prom) ** 2)
+					s0 += s1
+				out= math.sqrt(s0 / cont)
+				
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1	
 			continue
-
     	# *************************** Es una condicion de IFMAYOR ******************************/
 		elif (inputPop == gpG.OP_IFG) :    #  Es IF MAYOR
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) : #  Verificamos que haya un primer elemento
