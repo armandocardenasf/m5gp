@@ -50,6 +50,7 @@ def initialize_population (
     #blockspergrid = (an_array.size + (threadsperblock - 1)) // threadsperblock
     #increment_by_one[blockspergrid, threadsperblock](an_array)
 
+    print("Blocksize:", blocksize, "Gridsize: ", gridsize)
     gpCuda.initialize_population[blocksize, gridsize](cu_states,
                                         dInitialPopulation,
                                         numIndividuals,

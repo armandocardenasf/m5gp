@@ -20,9 +20,9 @@ y_train = dataset.iloc[:nrows, nvar-1].to_numpy().astype(np.float32)
 print('Running m5gp ...')  
  
 est = m5gp(
-            generations=30, # number of generations (limited by default)
+            generations=10, # number of generations (limited by default)
             Individuals=256, # number of individuals
-            GenesIndividuals=128, # number of genes per individual
+            GenesIndividuals=256, # number of genes per individual
             mutationProb=0.1, # mutation rate probability
             mutationDeleteRateProb=0.01,  # mutation delete rate probality
             sizeTournament=0.15, # size of tournament
@@ -43,7 +43,7 @@ est = m5gp(
             genVariableProb=0.39, #probablity for generate variables 
             genConstantProb=0.1, #probablity for generate constants
             genNoopProb=0.01, #probablity for generate NOOP Operators 
-			useOpIF=False, #Set if use IF operator
+			useOpIF=0, #Set if use IF operator
             log=1, #save log files
 			verbose=1, #Show menssages on execution
             logPath='log/' #path for logs

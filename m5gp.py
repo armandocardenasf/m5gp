@@ -46,7 +46,7 @@ class m5gpRegressor(BaseEstimator):
             genVariableProb=0.35, 
             genConstantProb=0.10, 
             genNoopProb=0.001,  
-            useOpIF=True,   
+            useOpIF=0,   
             log=1, 
             verbose=1, 
             logPath='log/',
@@ -119,7 +119,7 @@ class m5gpRegressor(BaseEstimator):
     # Define vectors to work on device 
     self.model = np.zeros((self.GenesIndividuals ), dtype=np.float32) 
 
-    print("Initialize Individual")
+    #rint("Initialize Individual")
     # *************************** Initialize population ********************************* 
     hInitialPopulation = gp2.initialize_population(
                               self.Individuals,
@@ -139,7 +139,7 @@ class m5gpRegressor(BaseEstimator):
     hStackIdx = []
     hStackModel = []
   
-    print ("Compute Individual")
+    #print ("Compute Individual")
     hOutIndividuals, hStack, hStackIdx, hStackModel = gp2.compute_individuals(
             hInitialPopulation,
             X_train,
@@ -166,7 +166,7 @@ class m5gpRegressor(BaseEstimator):
     indexWorstOffspring = 0
 
 
-    print("Compute Error")
+    #print("Compute Error")
     # ***************************** Compute ERROR ***********************************
     hFit, indexBestOffspring, indexWorstOffspring, coefArr_p, intercepArr_p, cuModel_p = gp2.ComputeError(self,
                 hOutIndividuals, 
@@ -203,7 +203,7 @@ class m5gpRegressor(BaseEstimator):
       stackBestModelNew = []
       start_time = time.time()
 
-      print("Torneo")
+      #print("Torneo")
       # *********************  Select Tournament  **********************
       hNewPopulation, hBestParentsTournament = gp2.select_tournament(
                     hInitialPopulation,
@@ -211,13 +211,14 @@ class m5gpRegressor(BaseEstimator):
                     self.Individuals, 
                     self.GenesIndividuals )
 
-      print("Mutacion")
+      #print("Mutacion")
       # *********************  UMAD Mutation  **********************
       hNewPopulation = gp2.umadMutation(self,
                                   hInitialPopulation,
                                   hBestParentsTournament,
                                   self.Individuals) 
 
+      #print (hNewPopulation)
       # ***************************  Compute Individuals  ****************************
       hOutIndividuals, hStack, hStackIdx, hStackModel = gp2.compute_individuals(
               hNewPopulation,
@@ -238,8 +239,8 @@ class m5gpRegressor(BaseEstimator):
               hStackIdx,
               self.evaluationMethod)
 
-      print("hFit:", hFit[indexBestIndividual_p], " indexBestIndividual_p:", indexBestIndividual_p)
-      print("hFitNew:", hFitNew[indexBestOffspring], " indexBestOffspring:", indexBestOffspring)
+      #print("hFit:", hFit[indexBestIndividual_p], " indexBestIndividual_p:", indexBestIndividual_p)
+      #print("hFitNew:", hFitNew[indexBestOffspring], " indexBestOffspring:", indexBestOffspring)
 
       # *********************** NEW SURVIVAL (Elitist) ***********************
       hNewPopulation, indexBestIndividual_p, coefArr_p, intercepArr_p, cuModel_p, stackBestModel_p = gp2.Survival(self,
@@ -268,6 +269,7 @@ class m5gpRegressor(BaseEstimator):
                       hFit,
                       hFitNew)
       # *********************** END NEW REPLACE ***********************
+      #print (hInitialPopulation)
       
 			# Validate Best Individual with Test file for generation
 			#/*trainFit = checkFitness(config, handle, dataFile, dInitialPopulation, indexBestIndividual_p, 0);*/
@@ -312,6 +314,7 @@ class m5gpRegressor(BaseEstimator):
       self.cuModel = copy.deepcopy(cuModel_p)
       self.maxRandomConstant = gpG.MAX_CONSTANT
 
+      #sacamos el mejor modelo del stack de expresiones 
       stackBestModel_p = gp2.getStackBestModel(
                   self.bestIndividual,
                   X_train,
@@ -320,8 +323,8 @@ class m5gpRegressor(BaseEstimator):
                   self.nrowTrain,
                   self.nvar) 
     
-      # Se construye una pila con las todas expresiones 
-      # generadas y almacenadas en el stack
+      # Se construye una nueva pila con las todas expresiones 
+      # generadas y almacenadas en el stack del mejor modelo
       allModelExpr = gpG.getModelExpr(self, stackBestModel_p)
       
       # De la cadena completa de expresiones obtenemos el numero  
@@ -347,7 +350,8 @@ class m5gpRegressor(BaseEstimator):
 
       # Reconstruccion del modelo.
       # Se agregan los coeficientes obtenidos del modelo de evaluacion cuML
-      # Por cada expresion, tenemos un coefiente   
+      # Por cada expresion, tenemos un coefiente  
+      
       for j in range(nStack):
         #Obtenemos las expresiones del stack
         tmp1 = m4gpModel.get()
