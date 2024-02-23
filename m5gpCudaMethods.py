@@ -17,15 +17,15 @@ import numpy as np
 import m5gpGlobals as gpG
 
 def gpuMaxUseProc(Individuals) :
-	blocksize = 1
+	blocksize = 1024
 	#gridsize = 2147483647
     
 	gridsize=(Individuals + blocksize-1) // blocksize
-	while(gridsize > 1024) :
-		if  (blocksize == 1):
-			blocksize = 0
-		blocksize = blocksize + 32
-		gridsize=(Individuals + blocksize-1) // blocksize
+	# while(gridsize > 1024) :
+	# 	if  (blocksize == 1):
+	# 		blocksize = 0
+	# 	blocksize = blocksize + 32
+	# 	gridsize=(Individuals + blocksize-1) // blocksize
 		
 	MaxOcup = {}
 	MaxOcup["BlockSize"] = gridsize
