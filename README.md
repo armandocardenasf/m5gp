@@ -88,3 +88,22 @@ The folllow parameters are passed to Regressor object for M5GP execution modify 
 ```
 The documentation of the library is a Doxygen documentation. The implementation has been done in order to use the library after a very quick reading of the documentation.
 ```
+
+## References 
+Cardenas, L. A., Trujillo, L., Hernández, D., & Muñoz, J M. (2024) 
+M5GP: Parallel Multidimensional Genetic Programming with Multidimensional Populations for Symbolic Regression 
+Mathematical and Computational Applications Journal, MDPI. [DOI](https://doi.org/https://doi.org/10.3390/mca1010000)
+
+
+ ##Institutions
+Departamento de Ingeniería Eléctrica Electrónica, Posgrado en Ciencias de la Ingeniería, Tecnológico Nacional de México/IT de Tijuana, Tijuana 22414, Mexico; 
+División de Estudios de Posgrado, Maestría en Sistemas Computacionales, Tecnológico Nacional de México/IT de La Paz,  La Paz BCS 23080, Mexico
+Departamento de Sistemas y Computación, Tecnológico Nacional de México/IT de Ensenada, Ensenada BC 22780, Mexico
+
+ ##Funding
+This work was supported by CONAHCYT (Mexico) project CF-2023-I-724, TecNM (Mexico)
+projects 16788.23-P and 17756.23-P, and the last author was supported by CONAHCYT (Mexico)
+doctoral scholarship with CVU number 771416.
+ 
+
+
