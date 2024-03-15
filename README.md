@@ -51,6 +51,12 @@ For execute M5GP type follows commands
 > python m5gp.py
 ```
 
+For test execution, use m5gp_Test.py file for separate test execution, type follows commands
+```
+> cd m5gp
+> pyhton test_M5GP.py
+```
+
 Set the parameters for M5GP execution
 
 ***
