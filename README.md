@@ -90,15 +90,15 @@ The documentation of the library is a Doxygen documentation. The implementation 
 ```
 
 ## References 
-Cardenas, L. A., Trujillo, L., Hernández, D., & Muñoz, J M. (2024) <br>
+1. Cardenas, L. A., Trujillo, L., Hernández, D., & Muñoz, J M. (2024) <br>
 M5GP: Parallel Multidimensional Genetic Programming with Multidimensional Populations for Symbolic Regression <br>
 Mathematical and Computational Applications Journal, MDPI. [DOI](https://doi.org/https://doi.org/10.3390/mca1010000) <br>
 
 
  ## Institutions
-Departamento de Ingeniería Eléctrica Electrónica, Posgrado en Ciencias de la Ingeniería, Tecnológico Nacional de México/IT de Tijuana, Tijuana 22414, Mexico <br>
-División de Estudios de Posgrado, Maestría en Sistemas Computacionales, Tecnológico Nacional de México/IT de La Paz,  La Paz BCS 23080, Mexico <br>
-Departamento de Sistemas y Computación, Tecnológico Nacional de México/IT de Ensenada, Ensenada BC 22780, Mexico <br>
+1. Departamento de Ingeniería Eléctrica Electrónica, Posgrado en Ciencias de la Ingeniería, Tecnológico Nacional de México/IT de Tijuana, Tijuana 22414, Mexico <br>
+2. División de Estudios de Posgrado, Maestría en Sistemas Computacionales, Tecnológico Nacional de México/IT de La Paz,  La Paz BCS 23080, Mexico <br>
+3. Departamento de Sistemas y Computación, Tecnológico Nacional de México/IT de Ensenada, Ensenada BC 22780, Mexico <br>
 
  ## Funding
 This work was supported by CONAHCYT (Mexico) project CF-2023-I-724, TecNM (Mexico)
