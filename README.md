@@ -96,7 +96,7 @@ Mathematical and Computational Applications Journal, MDPI. [DOI](https://doi.org
 
 
  ## Institutions
-1. Departamento de Ingeniería Eléctrica Electrónica, Posgrado en Ciencias de la Ingeniería, Tecnológico Nacional de México/IT de Tijuana, Tijuana 22414, Mexico <br>
+1. Departamento de Ingeniería Eléctrica Electrónica, Posgrado en Ciencias de la Ingeniería, Tecnológico Nacional de México/IT de Tijuana, Tijuana BC 22414, Mexico <br>
 2. División de Estudios de Posgrado, Maestría en Sistemas Computacionales, Tecnológico Nacional de México/IT de La Paz,  La Paz BCS 23080, Mexico <br>
 3. Departamento de Sistemas y Computación, Tecnológico Nacional de México/IT de Ensenada, Ensenada BC 22780, Mexico <br>
 
