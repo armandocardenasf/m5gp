@@ -90,7 +90,7 @@ The documentation of the library is a Doxygen documentation. The implementation 
 ```
 
 ## References 
-1. Cardenas, L. A., Trujillo, L., Hernández, D., & Muñoz, J M. (2024) <br>
+1. Cardenas, L. A., Trujillo, L., Hernández, D., Muñoz, J M. (2024) <br>
 M5GP: Parallel Multidimensional Genetic Programming with Multidimensional Populations for Symbolic Regression <br>
 Mathematical and Computational Applications Journal, MDPI. [DOI](https://doi.org/https://doi.org/10.3390/mca1010000) <br>
 
