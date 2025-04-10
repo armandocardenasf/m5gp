@@ -1,4 +1,4 @@
-#Branch IF 3.5
+#Branch IF 3.6
 
 from m5gp import m5gpRegressor as m5gp
 from   sklearn.model_selection import train_test_split
