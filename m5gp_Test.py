@@ -1,4 +1,3 @@
-#INTENTO 3 DE CAMBIOS
 from m5gp import m5gpRegressor as m5gp
 from   sklearn.model_selection import train_test_split
 import pandas as pd
@@ -6,7 +5,7 @@ import numpy as np
 
 #load the data
 #dataset = pd.DataFrame(pd.read_csv("/home/treelab/python-codes/data/Concrete/train_10107_1.txt" ,sep='\s+', header=None))
-dataset = pd.DataFrame(pd.read_csv("/home/acardenasf/pmlb/datasets5/589_fri_c2_1000_25/589_fri_c2_1000_25.tsv" ,sep='\s+', header=None))
+dataset = pd.DataFrame(pd.read_csv("/home/jose-nation/Proyectos/m5gp-main (Antonio)/dataTrain/train_10107_1.txt" ,sep='\s+', header=None))
 nrows = len(dataset.index)
 nvar = dataset.shape[1] - 1
 #print("Leyo X")
@@ -21,7 +20,7 @@ y_train = dataset.iloc[:nrows, nvar-1].to_numpy().astype(np.float32)
 print('Running m5gp ...')  
  
 est = m5gp(
-            generations=10, # number of generations (limited by default)
+            generations=2, # number of generations (limited by default)
             Individuals=256, # number of individuals
             GenesIndividuals=256, # number of genes per individual
             mutationProb=0.1, # mutation rate probability
@@ -64,3 +63,6 @@ yPredicted = est.predict(x_train)
 mse = est.meanSquaredError(y_train, yPredicted)
 print("mse: ", mse)
 print("rmse:", est.rmse(y_train, yPredicted))
+
+print(est.best_individual())
+print(est.complexity())

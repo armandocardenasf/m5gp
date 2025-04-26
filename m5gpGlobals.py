@@ -478,6 +478,80 @@ def m4gpModel(config, Model, Coef, Intercep) :
     #IndivLen:StackLen:ModelLen:ModelExpr
     return stackModel
 
+def m4gpModelClassification(config, Model) :
+    lenIndiv = 0
+    stackModel = LifoQueue()
+    m4gpModel = []
+    Expr = ""
+    tmpExpr = ""
+
+    maxVar = float((1000 + config.nvar -1) * (-1))
+
+    #print("maxvar:", maxVar)
+    lenModel = len(Model)
+    #print("getModelExpr. nvar:", config.nvar," Genes:",config.GenesIndividuals)
+    for i in range(lenModel):
+        gene = Model[i]
+        if (gene == -11111) :
+            break
+
+        geneExpr = getGeneExp(config, gene)
+        #print("GeneExpr (", i, "): ", gene, " - ", geneExpr)
+        lenIndiv += 1
+
+        # ********************************* Es una constante ************************************/
+        if ((gene >= MIN_CONSTANT) and (gene <= MAX_CONSTANT)) : # Es una constante
+            stackModel.put(gene)
+
+        # ********************************* Es una variable ************************************/
+        elif ((gene >= maxVar) and (gene <= -1000)) :  # Es una variable
+            stackModel.put(gene)
+
+        # ************ Es un operador de Suma,Resta,Division o Multiplicacion ******************/
+        elif ((gene == -10001) or (gene == -10002) or (gene == -10003) or (gene == -10004)) :
+            # Es Suma,Resta,Division o Multiplicacion
+            tmpArr = []
+            if (not stackModel.empty()) :
+                tmp = stackModel.get() #Obtenemos el ultimo elemento del stack
+                
+                if (not stackModel.empty()) :
+                    tmp2 = stackModel.get()
+                    
+                    tmpArr.append(tmp2)
+                    tmpArr.append(tmp)
+                    tmpArr.append(gene)
+
+                    stackModel.put(tmpArr)
+                else :
+                    stackModel.put(tmp)
+                # End if
+            # End if
+
+        # ********* Es un operador de seno, coseno, exponente, logaritmo y absoluto ************/
+        elif ((gene == -10005) or (gene == -10006) or (gene == -10007) or (gene == -10008) or (gene == -10009)) :
+            tmpArr = []
+            if (not stackModel.empty()) :
+                tmp = stackModel.get()
+                tmpArr.append(tmp)
+                tmpArr.append(gene)
+                stackModel.put(tmpArr)
+            # End if
+        elif (gene == OP_NOOP) :  # Es NoOP, no hacemos nada
+            if (not stackModel.empty()) :
+                g1 = g1
+            # End if
+        else :
+            g1 = gene
+        # End if
+    # End for (individuals)
+
+    stackLen = stackModel.qsize()
+  
+    #IndivLen:StackLen:ModelLen:ModelExpr
+    return stackModel
+
+
+
 def m4gpBuildExpr(tmp1, nvoModel) :
     if isinstance(tmp1, list):
         lenTmp = len(tmp1)
