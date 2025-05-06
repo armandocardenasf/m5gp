@@ -1,5 +1,5 @@
 # M5GP 
-M5GP Project prueba1
+M5GP Project prueba2
 Implementation of Genetic Programming algorithm in CUDA.
 ```
 This is a Python implementation of  M5GP programming algorithm.
