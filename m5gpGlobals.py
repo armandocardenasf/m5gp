@@ -41,13 +41,13 @@ OP_COS = -10006
 OP_EXP = -10007
 OP_LOG = -10008
 OP_ABS = -10009
-OP_SUM = -10020 #Future use
-OP_PRD = -10021 #Future use
-OP_PRM = -10022 #Future use
-OP_DVS = -10023 #Future use
-OP_IFG = -10010
-OP_IFL = -10011
-OP_IFE = -10012
+OP_SUM = -10010 #Future use - Sumatoria: de todo lo que esta en el stack
+OP_PRD = -10011 #Future use - Producto: de todo lo que esta en el stack
+OP_PRM = -10012 #Future use - Promedio: de todo lo que esta en el stack
+OP_DVS = -10013 #Future use - Division: de todo lo que este en el stack
+OP_IFG = -10014
+OP_IFL = -10015
+OP_IFE = -10016
 OP_FIN = -11111
 OP_NOOP = -10099
 
@@ -379,6 +379,10 @@ def getModelExpr(config, Model) :
             tmpExpr += "("+str(geneExpr)+")"
             stackModel.put(tmpExpr)
         # End if
+
+
+
+
     # End for (individuals)
 
     stackLen = stackModel.qsize()
@@ -489,3 +493,4 @@ def m4gpBuildExpr(tmp1, nvoModel) :
     else :    
         nvoModel.insert(0,tmp1)
     return nvoModel
+
