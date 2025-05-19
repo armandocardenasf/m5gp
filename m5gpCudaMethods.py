@@ -512,26 +512,29 @@ def compute_individuals(inputPopulation,
 			suma = 0
 			#pp = pushGenes 
 			#arr = zeros(pp)
-			arr = np.float64[:]
+			# arr = np.float64[:]
+			#arr= np.empty(5,np.float64)
+			arr=0
 
 			if (not isEmpty(pushGenes, sizeMaxDepthIndividual) and 
 	   			pushGenes > 1) :
 				cont = 1
+				pushGenesTMP=pushGenes
 				#Jalamos un primer elemento del stack
-				pushGenes -=  1
-				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
+				pushGenesTMP -=  1
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenesTMP]
 				#print("tmp:", tmp, " pushgenes:", pushGenes)
 				if (not math.isnan(tmp) and not math.isinf(tmp)) :
-					arr[0] = tmp
+					#arr[0] = tmp
 					suma = tmp
-					while (pushGenes > 0):
+					while (pushGenesTMP > 0):
 						#Jalamos un siguiente elemento del stack si hay
-						pushGenes -=  1
-						tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]						
+						pushGenesTMP -=  1
+						tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenesTMP]						
 						if (not math.isnan(tmp2) and not math.isinf(tmp2)) :
 							#print("Desv Std tmp2:", tmp2, " pushgenes:", pushGenes)
 							cont += 1
-							arr[cont] = tmp2
+							#arr[cont] = tmp2
 							suma += tmp2					
 				# Fin del While
 						
@@ -545,7 +548,9 @@ def compute_individuals(inputPopulation,
 
 				s0 = 0
 				for ds in range(cont):
-					s1 = math.fabs((arr[ds] - prom) ** 2)
+					pushGenes-=1
+					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]
+					s1 = math.fabs((tmp2 - prom) ** 2)
 					#print("Desv Std:", arr[ds])
 					s0 += s1
 				out= math.sqrt(s0 / cont)
