@@ -5,7 +5,7 @@ import numpy as np
 
 #load the data
 #dataset = pd.DataFrame(pd.read_csv("/home/treelab/python-codes/data/Concrete/train_10107_1.txt" ,sep='\s+', header=None))
-dataset = pd.DataFrame(pd.read_csv("/home/jose-nation/Proyectos/m5gp-main (Antonio)/dataTrain/train_10107_1.txt" ,sep='\s+', header=None))
+dataset = pd.DataFrame(pd.read_csv("/home/eric/diabetes-prediction-dataset/diabetes.csv"))
 nrows = len(dataset.index)
 nvar = dataset.shape[1] - 1
 #print("Leyo X")
