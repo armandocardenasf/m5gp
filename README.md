@@ -1,8 +1,9 @@
 # M5GP 
 M5GP Project
+M5GP 2.0
 Implementation of Genetic Programming algorithm in CUDA.
 ```
-This is a Python implementation of  M5GP programming algorithm.
+This is a Python implementation of  M5GP 2.0 programming algorithm.
 ```
 ***
 ## Description:  
@@ -28,17 +29,21 @@ Conda  > 23.3 version <br>
 Conda Environment for rapidsai > 23.04 <br>
 Conda package scikit-cuda <br>
 Conda package scikit-learn <br>
-Conda package pycuda <br>
+conda package pytorch <br>
+
 
 ## Installation 
 1. Install the conda environment rapidsai: <br>
 conda create -n rapids-23.04 -c rapidsai -c conda-forge -c nvidia  rapids=23.04 python=3.8 cudatoolkit=11.5 [link](https://docs.rapids.ai/install) <br>
 conda activate rapids-23.04 <br>
 
+conda create -n rapids-25.04 -c rapidsai -c conda-forge -c nvidia rapids=25.04 python=3.12 cudatoolkit=11.5 [link](https://docs.rapids.ai/install) <br>
+conda activate rapids-25.04 <br>
+
 3. Install adition packages:
 pip install scikit-cuda <br>
 conda install -c conda-forge scikit-learn <br>
-conda install -c conda-forge pycuda <br>
+conda install pytorch::pytorch <br>
 
 4. Download the M5GP source code:
 git clone https://github.com/armandocardenasf/m5gp.git

@@ -7,6 +7,7 @@
 
 from sklearn.base import BaseEstimator
 from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score
 
 import os
 import sys 
@@ -17,15 +18,19 @@ import numpy as np
 import time
 import gc
 import cupy as cp
+import torch
 
 from numba import cuda
 from numba.cuda.random import (create_xoroshiro128p_states,
                                xoroshiro128p_uniform_float32)
+import rmm
+from rmm.allocators.cupy import rmm_cupy_allocator
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.abspath(this_dir))
 import m5gpGlobals as gpG
 import m5gpGlobals as gpF
+import m5gpCudaMethods as gpCuda
 import m5gpCumlMethods as gpCuM
 import m5gpMod1 as gp2
 
@@ -46,7 +51,8 @@ class m5gpRegressor(BaseEstimator):
             genVariableProb=0.35, 
             genConstantProb=0.10, 
             genNoopProb=0.001,  
-            useOpIF=0,   
+            useOpIF=0,
+            operators_list = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs", "sum","prod", "avg", "std"],   
             log=1, 
             verbose=1, 
             logPath='log/',
@@ -67,6 +73,7 @@ class m5gpRegressor(BaseEstimator):
     self.genConstantProb=genConstantProb 
     self.genNoopProb=genNoopProb  
     self.useOpIF=useOpIF
+    self.operators_list = operators_list
     self.nvar=0 
     self.nrowTrain=0 
     self.nrowTest=0
@@ -81,14 +88,62 @@ class m5gpRegressor(BaseEstimator):
 
     print("Initializing m5gp")
 
+    # Check if CUDA is available
+    if torch.cuda.is_available():
+      # Get the device name
+      device = torch.cuda.get_device_name(0)
+      print(f"Using CUDA device: {device}")
+
+      print("Initial memory info:")
+      # Get total GPU memory
+      total_memory = torch.cuda.get_device_properties(0).total_memory
+      gpG.gpu_memory = total_memory
+      print(f"Total GPU memory: {total_memory / (1024**3):.2f} GB")  # Convert to GB
+      
+      # Get current memory allocation
+      allocated_memory = torch.cuda.memory_allocated(0)
+      print(f"Allocated GPU memory: {allocated_memory / (1024**3):.2f} GB")
+
+      # Get cached memory
+      cached_memory = torch.cuda.memory_reserved(0)
+      print(f"Cached GPU memory: {cached_memory / (1024**3):.2f} GB")
+
+      # Free up unused cached memory
+      torch.cuda.empty_cache()
+      print("Unused cached memory freed")
+
+      # Get allocated memory after clearing cache
+      allocated_memory_after = torch.cuda.memory_allocated(0)
+      print(f"Allocated GPU memory after clearing cache: {allocated_memory_after / (1024**3):.2f} GB")
+
+      gpG.free_mem = total_memory - allocated_memory_after
+      print(f"Free GPU memory : { gpG.free_mem / (1024**3):.2f} GB")
+
+      # Pool de memoria (ajusta tamaño al GPU)
+      allocMem =  int((gpG.gpu_memory / (1024**3)) - 1)
+      rmm.reinitialize(pool_allocator=True, initial_pool_size=allocMem<<30)  # 5 GB
+      cp.cuda.set_allocator(rmm_cupy_allocator)
+
+    else:
+      print("CUDA is not available.")
+      return
+
+
     # Usign pycuda, get GPU device memory information
-    gpG.pycudasetup()
-    gpG.gpu_memory = gpG.pycuda.mem_get_info()
-    gpG.free_mem = gpG.gpu_memory[0]
-    print("Initial memory info:")
-    print("GPU Memory: ", gpG.gpu_memory)
-    print("Free Memory: ", gpG.free_mem)
-    gpG.pycuda_finish()
+    # gpG.pycudasetup()
+    # gpG.gpu_memory = gpG.pycuda.mem_get_info()
+    # gpG.free_mem = gpG.gpu_memory[0]
+    # print("Initial memory info:")
+    # print("GPU Memory: ", gpG.gpu_memory)
+    # print("Free Memory: ", gpG.free_mem)
+    # gpG.pycuda_finish()
+
+
+    # Verifica los operadores validos y construye el diccionario a utilizar
+    # para generar la poblacion inicial
+
+    self.diccionario_ops = gpG.construir_diccionario_op(operators_list)
+    print(self.diccionario_ops)
 
     fName = "M5GP_OpS.csv"
     if os.path.exists(fName):
@@ -112,14 +167,14 @@ class m5gpRegressor(BaseEstimator):
     print("nRows:", self.nrowTrain, "nVars:", self.nvar)
 
     # Store the size in bytes for initial population
-    gpG.sizeMemPopulation = self.Individuals * self.GenesIndividuals 
-    gpG.sizeMemIndividuals = self.Individuals 
+    gpG.sizePopulation = self.Individuals * self.GenesIndividuals 
+    gpG.sizeIndividuals = self.Individuals 
     gpG.sizeTournament = math.ceil(self.sizeTournament * self.Individuals)
 
     # Define vectors to work on device 
-    self.model = np.zeros((self.GenesIndividuals ), dtype=np.float32) 
+    self.model = np.zeros((self.GenesIndividuals ), dtype=np.int32) 
 
-    #rint("Initialize Individual")
+    #print("Initialize Individual")
     # *************************** Initialize population ********************************* 
     hInitialPopulation = gp2.initialize_population(
                               self.Individuals,
@@ -130,15 +185,21 @@ class m5gpRegressor(BaseEstimator):
                               self.genVariableProb,
                               self.genConstantProb,
                               self.genNoopProb,
-                              self.useOpIF )
+                              self.useOpIF,
+                              self.diccionario_ops )
     # -- End of Initialize population --
 
+    #print("Individuals:")
+    #print(hInitialPopulation)
+    #return
+  
     # ***************************  Compute Individuals  ****************************
     hOutIndividuals = [] 
     hStack = []
     hStackIdx = []
     hStackModel = []
   
+
     #print ("Compute Individual")
     hOutIndividuals, hStack, hStackIdx, hStackModel = gp2.compute_individuals(
             hInitialPopulation,
@@ -160,8 +221,8 @@ class m5gpRegressor(BaseEstimator):
     cuModelNew = []
     stackBestModelNew = []
 
-    hFit = np.zeros((gpG.sizeMemIndividuals), dtype=np.float32)
-    hFitNew = np.zeros((gpG.sizeMemIndividuals), dtype=np.float32)
+    hFit = np.zeros((gpG.sizeIndividuals), dtype=np.float32)
+    hFitNew = np.zeros((gpG.sizeIndividuals), dtype=np.float32)
     indexBestOffspring = 0
     indexWorstOffspring = 0
 
@@ -307,12 +368,24 @@ class m5gpRegressor(BaseEstimator):
     self.bestIndividual = hInitialPopulation[idx_a1:idx_b1]
     self.model = self.bestIndividual
 
+    #print("Index bestIndividual:")
+    #print(indexBestIndividual_p)
+    #print("bestIndividual:")
+    #print(self.bestIndividual)
+
     # Para caso de evaluaciones utilizando cuML se construye una 
     # expresion utilizando todas expresiones del stack que generan 
     # la matriz semantica 
     if (self.evaluationMethod >= 2 ) :
       self.cuModel = copy.deepcopy(cuModel_p)
       self.maxRandomConstant = gpG.MAX_CONSTANT
+
+      #print("X_train:")
+      #print(X_train)
+
+      #X_train2 = X_train[0]
+      #print("X_train2:")
+      #print(X_train2)
 
       #sacamos el mejor modelo del stack de expresiones 
       stackBestModel_p = gp2.getStackBestModel(
@@ -323,27 +396,35 @@ class m5gpRegressor(BaseEstimator):
                   self.nrowTrain,
                   self.nvar) 
     
+      #print("stackBestModel_p:")
+      #print(stackBestModel_p)
+
       # Se construye una nueva pila con las todas expresiones 
       # generadas y almacenadas en el stack del mejor modelo
-      allModelExpr = gpG.getModelExpr(self, stackBestModel_p)
+      allStackExpr = gpG.getStackModelExpr(self, stackBestModel_p)
       
+      #print("allStackExpr:")
+      #print(allStackExpr)
+
       # De la cadena completa de expresiones obtenemos el numero  
       # de stacks de expresiones disponibles
       # 'X:Y:Z:<Expr1>', 'X:Y:Z:<Expr2>', .... , 'X:Y:Z:<ExprN'  
       # (0)X=Total de elementos, 
       # (1)Y=Numero de stacks, 
       # (2)Z=Elemento de este stack 
-      tmpModelExpr = allModelExpr[0]
+      tmpModelExpr = allStackExpr[0]
       tmp = tmpModelExpr.split(':')
       nStack = int(tmp[1])
 
       # Se crea una nueva pila para guardar las expresiones de cada 
-      # elememento del stack
+      # elememento del stack y posteriormente formar el modelo tipo M4GP
       nvoModel = [] 
       m4gpModel = gpG.m4gpModel(self, stackBestModel_p, 
                                 coefArr_p, 
                                 intercepArr_p) 
-            
+      
+      #print("m4gpModel:")
+      #print(m4gpModel)
 
       #print("self.cuModel.coef_.shape:", self.cuModel.coef_.shape)
       #print("self.cuModel.coef_:", self.cuModel.coef_)
@@ -477,7 +558,7 @@ class m5gpRegressor(BaseEstimator):
     else :
       model = self.m4gpModel
 
-    allModelExpr = gpG.getModelExpr(self, model) 
+    allModelExpr = gpG.getStackModelExpr(self, model) 
 
     tmpModelExpr = allModelExpr[0]
     tmp = tmpModelExpr.split(':')
@@ -503,7 +584,7 @@ class m5gpRegressor(BaseEstimator):
     else :
       model = self.m4gpModel     
 
-    allModelExpr = gpG.getModelExpr(self, model) 
+    allModelExpr = gpG.getStackModelExpr(self, model) 
     tmpModelExpr = allModelExpr[0]
     tmp = tmpModelExpr.split(':')
     nStack = int(tmp[1])
@@ -525,7 +606,8 @@ class m5gpRegressor(BaseEstimator):
     npY = np.array(cY).astype('float32')
 
     npYPred = YPred
-    mse = mean_squared_error(npY, npYPred, squared=False)
+    #mse = mean_squared_error(npY, npYPred, squared=False)
+    mse = mean_squared_error(npY, npYPred)
     return mse
 
   def rmse(self, cY, YPred) :
@@ -533,3 +615,12 @@ class m5gpRegressor(BaseEstimator):
     mse = math.sqrt(mse)
     return mse
    		
+  def R2(self, cY, YPred):
+    r2 = r2_score(cY, YPred)
+    return r2
+  
+  def getStackExpr(self, Model) :
+    self.nvar=7
+    allModelExpr = gpG.getStackModelExpr(self, Model)
+    print(allModelExpr)
+    return

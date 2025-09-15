@@ -6,11 +6,15 @@
 # *********************************************************************
  
 import math
+import time
 import copy
 import cupy as cp
 import cudf
 import gc
 import numpy as np
+
+#import rmm
+#from rmm.allocators.cupy import rmm_cupy_allocator
 
 import cuml as cu
 from cuml import LinearRegression
@@ -106,7 +110,7 @@ def createCumlMethod(mFitness) :
     if mFitness == 4 :
         slr = Ridge(alpha=1.0, # (default = 1.0)
                     fit_intercept=True, # (default = True)
-                    normalize=True, # (default = False)
+                    normalize=False, # (default = False)
                     solver="svd", #solver {‘eig’, ‘svd’, ‘cd’} (default = ‘eig’)
                     verbose=6)
 
@@ -114,14 +118,15 @@ def createCumlMethod(mFitness) :
         slr = KernelRidge(kernel="linear")
 
     if mFitness == 6 :
-        slr = ElasticNet(alpha = 1.0,  # (default = 1.0)
-                         l1_ratio=0.5,  # (default = 0.5)
+        #net = ElasticNet(alpha=1e-3, l1_ratio=0.1, max_iter=1000, tol=1e-3, output_type="cupy")
+        slr = ElasticNet(alpha = 1e-3,  # (default = 1.0)
+                         l1_ratio=0.1,  # (default = 0.5)
                          solver='cd', # {‘cd’, ‘qn’} (default=’cd’)
                          normalize=False, #  (default = False)
                          max_iter = 1000, #  (default = 1000)
                          tol=0.001, # (default = 1e-3)
                          fit_intercept=True, # (default = True)
-                         selection= 'random' # {‘cyclic’, ‘random’} (default=’cyclic’)
+                         selection= 'cyclic' # {‘cyclic’, ‘random’} (default=’cyclic’)
                          )
 
     if mFitness == 7 :
@@ -149,18 +154,19 @@ def createCumlMethod(mFitness) :
                                 loss='squared_loss', # {‘hinge’, ‘log’, ‘squared_loss’} (default = ‘hinge’)
                                 power_t=0.5, # (default = 0.5)
                                 output_type = 'numpy', #output_type : {‘input’, ‘array’, ‘dataframe’, ‘series’, ‘df_obj’, ‘numba’, ‘cupy’, ‘numpy’, ‘cudf’, ‘pandas’}, default=None
-                                verbose = True)
+                                verbose = False)
     #end if
     return slr
 
 
 #Ejecuta la evaluacion del modelo utilizando CUML    
-def ExecCuml(nProc, hFit,  st, mFitness, indiv, genes, nrows, hStackIdx, y_train, scorer):
+def ExecCuml(nProc, hFit,  st, mFitness, indiv, genes, nrows, hStackIdx, y_train, scorer, slr):
 
     if (nProc > indiv):
         return
     
-    slr = createCumlMethod(mFitness)
+
+   ## slr = createCumlMethod(mFitness)
     #slr = copy.deepcopy(slr1)
 
     ind = st[nProc]
@@ -180,10 +186,12 @@ def ExecCuml(nProc, hFit,  st, mFitness, indiv, genes, nrows, hStackIdx, y_train
 
     # Verificamos que al menos tengamos una columna en el arreglo
     if (sCols >= 1) :
-        cX = cp.asarray(sX_train, dtype=cp.float64)
-        cY = cp.asarray(y_train, dtype=cp.float64)
+        cX = cp.asarray(sX_train, dtype=cp.float32)
+        cY = cp.asarray(y_train, dtype=cp.float32)
 
         # Procesamos el Fit con el arreglo transformado
+        #print("Ejecuta fit")
+        #print(cX, cY)
         reg = slr.fit(cX, cY)
    
         # Creamos un vector de coeficientes
@@ -195,6 +203,7 @@ def ExecCuml(nProc, hFit,  st, mFitness, indiv, genes, nrows, hStackIdx, y_train
         else :
             intercepArr = reg.intercept_
 
+        #print("Ejecuta predict")
         yPred = slr.predict(cX)
 
         cuModel= copy.deepcopy(slr)
@@ -253,23 +262,27 @@ def EvaluateCuml(self, hStack, hStackIdx, hFit, y_train) :
 
     nCores = cpu_count()
     n_processes = int(nCores/3) 
-    n_processes = 4
+    #n_processes = 4
     #n_processes = 1
     set_start_method('spawn', force=True)
 
-    manager = Manager()
-    hFit_L = manager.list(hFit)
-    st_L = manager.list(st)
-    hStackIdx_L  = manager.list(hStackIdx)
-    y_train_L  = manager.list(y_train)
+    print("Inicio cuML")
+    # with Manager() as manager:
+    #     #manager = Manager()
+    #     print("Inicio cuML 1")
+    #     hFit_L = manager.list(hFit)
+    #     st_L = manager.list(st)
+    #     print("Inicio cuML 2")
+    #     hStackIdx_L  = manager.list(hStackIdx)
+    #     y_train_L  = manager.list(y_train)
     
     #Ejecuta la evaluacion de CUML utilizando nucleos de multiprocesamiento
     print("Inicio cuML multiprocess nCores:", nCores, "n_processes:", n_processes)
     with Pool(processes=n_processes) as pool:
-            results = [pool.apply_async(ExecCuml, args=(nProc, hFit_L, st_L, self.evaluationMethod, self.Individuals, self.GenesIndividuals, self.nrowTrain, hStackIdx_L, y_train_L, self.scorer)) for nProc in range(self.Individuals)]
+            results = [pool.apply_async(ExecCuml, args=(nProc, hFit, st, self.evaluationMethod, self.Individuals, self.GenesIndividuals, self.nrowTrain, hStackIdx, y_train, self.scorer)) for nProc in range(self.Individuals)]
             try:
                 hRes = [res.get(timeout=1000) for res in results]
-                hFit_tmp = list(hFit_L)
+                hFit_tmp = list(hFit)
             except :
                 print("Timeout Multiprocessing")
                 hFit_tmp = hFit.fill(gpG.MAX_RMSE)
@@ -300,13 +313,28 @@ def EvaluateCuml2(self, hStack, hStackIdx, hFit, y_train) :
     intercepArr = []
     cuModel = []
                     
+    start_time = time.time()
     #Obtenemos todos los stack con todos los resultados de la matriz semantica
     st = hStack.reshape(self.Individuals, self.nrowTrain * self.GenesIndividuals)
 
+    # elapsed1 = time.time() - start_time
+    # print("EvaluateCuml2 1 ", elapsed1)
+    # elapsed2 = 0
+
+
+    #print("Crea cuML Method")
+    slr = createCumlMethod(self.evaluationMethod)
+
     #Ejecuta la evaluacion de CUML de manera secuencial
     for i in range(self.Individuals):
-        hRes = ExecCuml(i, hFit, st, self.evaluationMethod, self.Individuals, self.GenesIndividuals, self.nrowTrain, hStackIdx, y_train, self.scorer)
         
+        #print("Ejecuta cuML Method")
+        #start_time2 = time.time()
+        hRes = ExecCuml(i, hFit, st, self.evaluationMethod, self.Individuals, self.GenesIndividuals, self.nrowTrain, hStackIdx, y_train, self.scorer, slr)
+        
+        # elapsed2 = time.time() - start_time2 
+        # print("EvaluateCuml2 2 ", elapsed2)
+
         # Regresa el modelo de CUML del individuo generado (hRes)
         slr2 = copy.deepcopy(hRes)
 
@@ -314,6 +342,9 @@ def EvaluateCuml2(self, hStack, hStackIdx, hFit, y_train) :
         cuModel.insert(i,slr2)
         intercepArr.insert(i,slr2.intercept_)
         coefArr.insert(i,slr2.coef_)
+
+        # elapsed3 = time.time() - start_time2 - elapsed2 
+        # print("EvaluateCuml2 3 ", elapsed3)
 
     return hFit, cuModel, coefArr, intercepArr
 

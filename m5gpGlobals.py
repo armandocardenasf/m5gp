@@ -12,11 +12,17 @@ import sys
 import warnings
 import numpy as np
 import atexit
-from   pycuda.compiler import SourceModule
-import pycuda.driver as cuda
-import pycuda.gpuarray as gpuarray
-import pycuda.curandom as curandom
-import pycuda.tools as tools
+
+from numba import cuda
+import ctypes
+
+# from   pycuda.compiler import SourceModule
+# import pycuda.driver as cuda
+# import pycuda.gpuarray as gpuarray
+# import pycuda.curandom as curandom
+# import pycuda.tools as tools
+
+
 #import skcuda.cublas as cublas
 from   datetime import datetime
 import pandas as pd
@@ -27,29 +33,66 @@ import csv
 from queue import LifoQueue
 
 
-import pycuda.driver as pycuda
-from pycuda.tools import make_default_context, DeviceMemoryPool, clear_context_caches
+# import pycuda.driver as pycuda
+# from pycuda.tools import make_default_context, DeviceMemoryPool, clear_context_caches
 
-VAR_INI = -1000
-OP_INI = -10000
-OP_ADD = -10001
-OP_SUB = -10002
-OP_MUL = -10003
-OP_DIV = -10004
-OP_SIN = -10005
-OP_COS = -10006
-OP_EXP = -10007
-OP_LOG = -10008
-OP_ABS = -10009
-OP_SUM = -10020 #Future use
-OP_PRD = -10021 #Future use
-OP_PRM = -10022 #Future use
-OP_DVS = -10023 #Future use
-OP_IFG = -10010
-OP_IFL = -10011
-OP_IFE = -10012
-OP_FIN = -11111
-OP_NOOP = -10099
+VAR_INI = -1000 # Initial value for variables
+OP_INI = -10000 # Initial value for operators
+OP_ADD = -10001 # Addition operator
+OP_SUB = -10002 # Subtraction operator
+OP_MUL = -10003 # Multiplication operator
+OP_DIV = -10004 # Division operator
+OP_SIN = -10005 # Sine operator
+OP_COS = -10006 # Cosine operator
+OP_EXP = -10007 # Exponential operator
+OP_LOG = -10008 # Logarithm operator
+OP_ABS = -10009 # Absolute value operator
+
+OP_SUM = -10010 # Summation operator
+OP_PRD = -10011 # Product operator
+OP_AVG = -10012 # Average operator
+OP_SDV = -10013 # Standard deviation operator
+
+# ***************************************************************
+# Si hay nuevos operadores/funciones, ponerlas en este espacio,
+# entre el ultimo operador agregado y OP_END.
+# ***************************************************************
+
+
+# ***************************************************************
+# Si se agrega un nuevo operador, incrementar el valor de OP_END
+# ***************************************************************
+OP_END = -10014 # Final operator
+OP_IF = OP_END
+
+# ***************************************************************
+# Operadores IF siempre deberan ser los ultimos de los operadores.
+# ***************************************************************
+OP_IFE = OP_END        # Conditional special operator equal to (if ==)
+OP_IFG = OP_END + 1    # Conditional special operator greater than (if >)
+OP_IFL = OP_END + 2    # Conditional special operator less than (if <)
+
+
+OP_FIN = -11111  # Max number of operators
+OP_NOOP = -10099  # Not Valid Operator
+
+# Diccionario maestro de operadores y sus valores numéricos
+OPERADORES_MASTER = {
+    "+": OP_ADD, # Addition operator
+    "-": OP_SUB, # Subtraction operator
+    "*": OP_MUL, # Multiplication operator
+    "/": OP_DIV, # Division operator
+    "sin": OP_SIN, # Sine operator
+    "cos": OP_COS, # Cosine operator
+    "exp": OP_EXP, # Exponential operator
+    "log": OP_LOG, # Logarithm operator
+    "abs": OP_ABS, # Absolute value operator
+    "sum": OP_SUM, # Summation operator
+    "prd": OP_PRD, # Product operator
+    "avg": OP_AVG, # Average operator
+    "std": OP_SDV, # Standard deviation operator
+    "if": OP_IF # Conditional operator
+}
 
 PI = 3.14159265
 
@@ -58,13 +101,20 @@ MAX_RMSE = 9999999
 MAX_CONSTANT = 999
 MIN_CONSTANT = MAX_CONSTANT * (-1)
 
+
 global device_id
 global gpu_memory
 global free_mem 
 
-global sizeMemPopulation
-global sizeMemIndividuals 
+global sizePopulation
+global sizeIndividuals 
 global sizeTournament
+
+def get_gpu_memory_info():
+    free = ctypes.c_size_t()
+    total = ctypes.c_size_t()
+    cuda.cuMemGetInfo(ctypes.byref(free), ctypes.byref(total))
+    return free.value, total.value
 
 def pycudasetup(gpu_device_number=0):
     try:
@@ -116,6 +166,13 @@ def WriteCSV_OpS(nFun, elapsed,Ops, fCreate=False) :
 
 def Truncate(f, n) :
     return math.floor(f * 10 ** n) / 10 ** n
+
+def construir_diccionario_op(operadores_deseados):
+       
+    # Construir una lista solo con los operadores solicitados
+    diccionario_resultado = [OPERADORES_MASTER[op] for op in operadores_deseados if op in OPERADORES_MASTER]
+    return np.array(diccionario_resultado, dtype=np.int32)
+
 
 def bestIndividualInfo(config,  
                         dInitialPopulation,  
@@ -200,9 +257,14 @@ def getIndividualExpr(config,
     numOpExp = 0
     numOpLog = 0
     numOpAbs = 0
+    numOpSum = 0
+    numOpPrd = 0
+    numOpAvg = 0
+    numOpSdv = 0
     Expr = ""
 
-    maxVar = float((1000 + config.nvar -1) * (-1))
+    var_ini = math.fabs(VAR_INI)
+    maxVar = float((var_ini + config.nvar -1) * (-1))
     for i in range(config.GenesIndividuals):
         gene = dInitialPopulation[indexBestIndividual_p * config.GenesIndividuals + i];
 
@@ -210,41 +272,55 @@ def getIndividualExpr(config,
             BestIndividualLength =  BestIndividualLength + 1
         elif (gene == OP_NOOP) :
             numOpNOOP = numOpNOOP + 1
-        elif (gene == -10001) :
+        elif (gene == OP_ADD) :
             numOps = numOps + 1
             Expr = Expr + "+\t"
-        elif (gene == -10002) :
+        elif (gene == OP_SUB) :
             numOps = numOps + 1
             Expr = Expr + "-\t"
-        elif (gene == -10003) :
+        elif (gene == OP_MUL) :
             numOps = numOps + 1
             Expr = Expr + "*\t"
-        elif (gene == -10004) :
+        elif (gene == OP_DIV) :
             numOps = numOps + 1
             Expr = Expr + "/\t"
-        elif (gene == -10005) :
+        elif (gene == OP_SIN) :
             numOpSin = numOpSin + 1
             Expr = Expr + "sin\t"
-        elif (gene == -10006) :
+        elif (gene == OP_COS) :
             numOpCos = numOpCos + 1
             Expr = Expr + "cos\t"
-        elif (gene == -10007) :
+        elif (gene == OP_EXP) :
             numOpExp = numOpExp + 1
             Expr = Expr + "exp\t"
-        elif (gene == -10008) :
+        elif (gene == OP_EXP) :
             numOpLog = numOpLog + 1
             Expr = Expr + "log\t"
-        elif (gene == -10009) :
+        elif (gene == OP_ABS) :
             numOpAbs = numOpAbs +1
             Expr = Expr + "Abs\t"
-        elif ((gene == -10010) or (gene == -10011) or (gene == -10012)) :
+
+        elif (gene == OP_SUM) :
+            numOpAbs = numOpSum +1
+            Expr = Expr + "SUM\t"
+        elif (gene == OP_PRD) :
+            numOpAbs = numOpPrd +1
+            Expr = Expr + "PROD\t"
+        elif (gene == OP_AVG) :
+            numOpAbs = numOpAvg +1
+            Expr = Expr + "AVG\t"
+        elif (gene == OP_SDV) :
+            numOpAbs = numOpSdv +1
+            Expr = Expr + "SDV\t"
+
+        elif ((gene == OP_IFE) or (gene == OP_IFG) or (gene == OP_IFL)) :
             numOpIf = numOpIf + 1
             Expr = Expr + "if\t"       
         #if ((gene <= -1000) and (gene > -10000)) :
-        elif ((gene <= -1000) and ((gene >= maxVar)) and (gene.is_integer())) :
+        elif ((gene <= VAR_INI) and ((gene >= maxVar)) and (gene.is_integer())) :
             numVars = numVars + 1
             Expr = Expr + "X"
-            Expr = Expr + str((int)((gene+1000) * (-1)))
+            Expr = Expr + str((int)((gene + var_ini) * (-1)))
             Expr = Expr + "\t"
         elif ((gene >= (MIN_CONSTANT )) and (gene <= MAX_CONSTANT)) :
             numConst = numConst + 1
@@ -265,26 +341,39 @@ def getIndividualExpr(config,
 def getGeneExp(config, gene) :
     Expr = ""
 
-    maxVar = float((1000 + config.nvar -1) * (-1))
-    if (gene == -10001) :
+    var_ini = math.fabs(VAR_INI)
+    maxVar = float((var_ini + config.nvar -1) * (-1))
+    if (gene == OP_ADD) :
         Expr += "+"
-    elif (gene == -10002) :
+    elif (gene == OP_SUB) :
         Expr += "-"  
-    elif (gene == -10003) :
+    elif (gene == OP_MUL) :
         Expr += "*"
-    elif (gene == -10004) :
+    elif (gene == OP_DIV) :
         Expr += "/"
-    elif (gene == -10005) :
+    elif (gene == OP_SIN) :
         Expr += "sin"
-    elif (gene == -10006) :
+    elif (gene == OP_COS) :
         Expr += "cos"
-    elif (gene == -10007) :
+    elif (gene == OP_EXP) :
         Expr += "exp"
-    elif (gene == -10008) :
+    elif (gene == OP_LOG) :
         Expr += "log"
-    elif (gene == -10009) :
-        Expr += "Abs"
-    elif ((gene <= -1000) and ((gene >= maxVar)) and (gene.is_integer())) :
+    elif (gene == OP_ABS) :
+        Expr += "abs"
+        
+
+    elif (gene == OP_SUM) :
+        Expr += "+"
+    elif (gene == OP_PRD) :
+        Expr += "*"
+    elif (gene == OP_AVG) :
+        Expr += "avg"
+    elif (gene == OP_SDV) :
+        Expr += "sdv"
+
+
+    elif ((gene <= VAR_INI) and ((gene >= maxVar)) and (gene.is_integer())) :
         Expr += "X_"
         Expr += str(int(((gene+1000) * (-1))))
     elif ((gene >= MIN_CONSTANT) and (gene <= MAX_CONSTANT)) :
@@ -294,37 +383,41 @@ def getGeneExp(config, gene) :
     
     return Expr
 
-# Obtiene las expresiones completas del modelo dentro del stack
-def getModelExpr(config, Model) :
+# Obtiene todo el stack con todas las expresiones completas del modelo 
+def getStackModelExpr(config, Model) :
     lenIndiv = 0
     stackModel = LifoQueue()
     Expr = ""
     tmpExpr = ""
 
-    maxVar = float((1000 + config.nvar -1) * (-1))
+    var_ini = math.fabs(VAR_INI)
+    maxVar = float((var_ini + config.nvar -1) * (-1))
 
     lenModel = len(Model)
     for i in range(lenModel):
         gene = Model[i]
-        if (gene == -11111) :
+        if (gene == OP_FIN) :
             break
         geneExpr = getGeneExp(config, gene)
-        lenIndiv += 1
+        #print(geneExpr)
+        #lenIndiv += 1
 
         # ********************************* Es una constante ************************************/
         if ((gene >= MIN_CONSTANT) and (gene <= MAX_CONSTANT)) : # Es una constante
             tmpExpr = "1:"
             tmpExpr += "("+str(geneExpr)+")"
             stackModel.put(tmpExpr)
+            lenIndiv += 1
 
         # ********************************* Es una variable ************************************/
-        elif ((gene <= -1000) and ((gene >= maxVar)) and (gene.is_integer())) :  # Es una variable
+        elif ((gene <= VAR_INI) and ((gene >= maxVar)) and (gene.is_integer())) :  # Es una variable
             tmpExpr= "1:"
             tmpExpr += geneExpr
             stackModel.put(tmpExpr)
+            lenIndiv += 1
 
         # ************ Es un operador de Suma,Resta,Division o Multiplicacion ******************/
-        elif ((gene == -10001) or (gene == -10002) or (gene == -10003) or (gene == -10004)) :
+        elif ((gene == OP_ADD) or (gene == OP_SUB) or (gene == OP_MUL) or (gene == OP_DIV)) :
             # Es Suma,Resta,Division o Multiplicacion
             if (not stackModel.empty()) :
                 tmp = stackModel.get() #Obtenemos el ultimo elemento del stack
@@ -346,13 +439,15 @@ def getModelExpr(config, Model) :
                         tmpExpr += ")"
                         stackModel.put(tmpExpr)
                     else :
-                        stackModel.put(tmpT)               
+                        stackModel.put(tmpT)      
+
+                    lenIndiv += 1         
                     #End if
                 # End if
             # End if
 
         # ********* Es un operador de seno, coseno, exponente, logaritmo y absoluto ************/
-        elif ((gene ==  OP_SIN) or (gene == OP_COS) or (gene == OP_EXP) or (gene == OP_LOG) or (gene == OP_ABS)) :
+        elif ((gene ==  OP_SIN) or (gene == OP_COS) or (gene == OP_EXP)  or (gene == OP_ABS)) :
             if (not stackModel.empty()) :
                 tmp = stackModel.get()
                 strCont = tmp[0 : tmp.find(":")]
@@ -367,9 +462,186 @@ def getModelExpr(config, Model) :
                     tmpExpr += ")"
                     tmpExpr += ")"
                     stackModel.put(tmpExpr)
+                    lenIndiv += 1
                 #end if
             # End if
+
+        # ********* Es un operador de logaritmo  ************/
+        elif ((gene == OP_LOG)) :
+            if (not stackModel.empty()) :
+                tmp = stackModel.get()
+                strCont = tmp[0 : tmp.find(":")]
+                if (strCont.isnumeric()) :
+                    cont1 = int(strCont)
+                    tmp  = tmp[tmp.find(":") + 1 : len(tmp)]
+                    tmpExpr= str(cont1 + 2)
+                    tmpExpr += ":("
+                    tmpExpr += geneExpr 
+                    tmpExpr += "(abs("
+                    tmpExpr += tmp
+                    tmpExpr += "))"
+                    tmpExpr += ")"
+                    stackModel.put(tmpExpr)
+
+                    lenIndiv += 2
+                #end if
+            # End if
+
+        # ********* Es un operador de sumatoria  ************/
+        elif ((gene == OP_SUM)) :
+            #print("Encontro OP_SUM")
+            if (not stackModel.empty()) :
+                tmpExpr = ""
+                Expr = ""
+                ContT = 0
                     
+                while(stackModel.qsize() > 0 ) :
+                    #print("Encontro expresion: ")
+                    tmp = stackModel.get() # Se obtiene la ultima expresion de la pila de expresiones
+                    #print(tmp)
+                    strCont = tmp[0 : tmp.find(":")] # obtener el numero de elementos 
+                    if (strCont.isnumeric()) :
+                        cont1 = int(strCont)
+                        ContT += cont1
+                        tmp  = tmp[tmp.find(":") + 1 : len(tmp)] # Obtenemos solo la expresion
+                        #tmpExpr= str(cont1 + 1)
+                        #tmpExpr += ":( ("  
+                        tmpExpr += "("                                             
+                        tmpExpr += tmp
+                        tmpExpr += ")"
+                        if (stackModel.qsize() > 0):
+                            tmpExpr += "+" # geneExpr
+                            ContT += 1
+                            lenIndiv += 1
+                    #end if
+                #end while
+                #tmpExpr= str(ContT)
+                Expr = str(ContT) + ":((" + tmpExpr + ")"
+                #tmpExpr += ":( ("
+                stackModel.put(Expr)
+                #end if
+            # End if
+
+        # ********* Es un operador de producto  ************/
+        elif ((gene == OP_PRD)) :
+            #print("Encontro OP_MUL")
+            if (not stackModel.empty()) :
+                tmpExpr = ""
+                Expr = ""
+                ContT = 0
+                    
+                while(stackModel.qsize() > 0 ) :
+                    #print("Encontro expresion: ")
+                    tmp = stackModel.get() # Se obtiene la ultima expresion de la pila de expresiones
+                    #print(tmp)
+                    strCont = tmp[0 : tmp.find(":")] # obtener el numero de elementos 
+                    if (strCont.isnumeric()) :
+                        cont1 = int(strCont)
+                        ContT += cont1
+                        tmp  = tmp[tmp.find(":") + 1 : len(tmp)] # Obtenemos solo la expresion
+                        #tmpExpr= str(cont1 + 1)
+                        #tmpExpr += ":( ("  
+                        tmpExpr += "("                                             
+                        tmpExpr += tmp
+                        tmpExpr += ")"
+                        if (stackModel.qsize() > 0):
+                            tmpExpr += "*" #getGeneExp(config, gene)
+                            ContT += 1
+                            lenIndiv += 1
+
+                    #end if
+                #end while
+                #tmpExpr= str(ContT)
+                Expr = str(ContT) + ":((" + tmpExpr + ")"
+                #tmpExpr += ":( ("
+                stackModel.put(Expr)
+                #end if
+            # End if
+
+        # ********* Es un operador de promedio  ************/
+        elif ((gene == OP_AVG)) :
+            #print("Encontro OP_AVG")
+            if (not stackModel.empty()) :
+                tmpExpr = ""
+                Expr = ""
+                ContT = 0
+                NumExpr = stackModel.qsize()
+
+                while(stackModel.qsize() > 0 ) :
+                    #print("Encontro expresion: ")
+                    tmp = stackModel.get() # Se obtiene la ultima expresion de la pila de expresiones
+                    #print(tmp)
+                    strCont = tmp[0 : tmp.find(":")] # obtener el numero de elementos 
+                    if (strCont.isnumeric()) :
+                        cont1 = int(strCont)
+                        ContT += cont1
+                        tmp  = tmp[tmp.find(":") + 1 : len(tmp)] # Obtenemos solo la expresion
+                        #tmpExpr= str(cont1 + 1)
+                        #tmpExpr += ":( ("  
+                        tmpExpr += "("                                             
+                        tmpExpr += tmp
+                        tmpExpr += ")"
+                        if (stackModel.qsize() > 0):
+                            tmpExpr += "+" #getGeneExp(config, gene)
+                            ContT += 1
+                            lenIndiv += 1
+
+                    #end if
+                #end while
+                #tmpExpr= str(ContT)
+                ContT += 2
+                lenIndiv += 2
+                Expr = str(ContT) + ":((" + tmpExpr + ")/" + str(NumExpr) + ")"
+                #tmpExpr += ":( ("
+                stackModel.put(Expr)
+                #end if
+            # End if
+
+        # ********* Es un operador de desviacion estandard  ************/
+        elif ((gene == OP_SDV)) :
+            #print("Encontro OP_SDV")
+            if (not stackModel.empty()) :
+                tmpExpr = ""
+                Expr = ""
+                ContT = 0
+                NumExpr = stackModel.qsize()
+
+                while(stackModel.qsize() > 0 ) :
+                    #print("Encontro expresion: ")
+                    tmp = stackModel.get() # Se obtiene la ultima expresion de la pila de expresiones
+                    #print(tmp)
+                    strCont = tmp[0 : tmp.find(":")] # obtener el numero de elementos 
+                    if (strCont.isnumeric()) :
+                        cont1 = int(strCont)
+                        ContT += cont1
+                        tmp  = tmp[tmp.find(":") + 1 : len(tmp)] # Obtenemos solo la expresion
+                        #tmpExpr= str(cont1 + 1)
+                        #tmpExpr += ":( ("  
+                        tmpExpr += "("                                             
+                        tmpExpr += tmp
+                        tmpExpr += ")"
+                        if (stackModel.qsize() > 0):
+                            tmpExpr += "+" #getGeneExp(config, gene)
+                            ContT += 1
+                            lenIndiv += 1
+
+                    #end if
+                #end while
+                #tmpExpr= str(ContT)
+                ContT += 2
+                lenIndiv += 2
+                Expr = "((" + tmpExpr + ")/" + str(NumExpr) + ")"
+                #tmpExpr += ":( ("
+                Expr = str(ContT) + ":((" + Expr + "))"
+                stackModel.put(Expr)
+                #end if
+            # End if
+
+        # ********* Es un operador IFG o IFL o IFE ************/
+        elif ((gene ==  OP_IFG) or (gene == OP_IFL) or (gene == OP_IFE)) :
+            if (not stackModel.empty()) :
+               tmpExpr = ""   
+
         elif (gene == OP_NOOP) :  # Es NoOP, no hacemos nada
             if (not stackModel.empty()) :
                 g1 = 0
@@ -413,7 +685,8 @@ def m4gpModel(config, Model, Coef, Intercep) :
     Expr = ""
     tmpExpr = ""
 
-    maxVar = float((1000 + config.nvar -1) * (-1))
+    var_ini = math.fabs(VAR_INI)
+    maxVar = float((var_ini + config.nvar -1) * (-1))
 
     #print("maxvar:", maxVar)
     lenModel = len(Model)
@@ -423,7 +696,7 @@ def m4gpModel(config, Model, Coef, Intercep) :
         if (gene == -11111) :
             break
 
-        geneExpr = getGeneExp(config, gene)
+        #geneExpr = getGeneExp(config, gene)
         #print("GeneExpr (", i, "): ", gene, " - ", geneExpr)
         lenIndiv += 1
 
@@ -432,11 +705,11 @@ def m4gpModel(config, Model, Coef, Intercep) :
             stackModel.put(gene)
 
         # ********************************* Es una variable ************************************/
-        elif ((gene >= maxVar) and (gene <= -1000)) :  # Es una variable
+        elif ((gene >= maxVar) and (gene <= VAR_INI)) :  # Es una variable
             stackModel.put(gene)
 
         # ************ Es un operador de Suma,Resta,Division o Multiplicacion ******************/
-        elif ((gene == -10001) or (gene == -10002) or (gene == -10003) or (gene == -10004)) :
+        elif ((gene == OP_ADD) or (gene == OP_SUB) or (gene == OP_DIV) or (gene == OP_MUL)) :
             # Es Suma,Resta,Division o Multiplicacion
             tmpArr = []
             if (not stackModel.empty()) :
@@ -456,7 +729,7 @@ def m4gpModel(config, Model, Coef, Intercep) :
             # End if
 
         # ********* Es un operador de seno, coseno, exponente, logaritmo y absoluto ************/
-        elif ((gene == -10005) or (gene == -10006) or (gene == -10007) or (gene == -10008) or (gene == -10009)) :
+        elif ((gene == OP_SIN) or (gene == OP_COS) or (gene == OP_EXP) or (gene == OP_LOG) or (gene == OP_ABS)) :
             tmpArr = []
             if (not stackModel.empty()) :
                 tmp = stackModel.get()
@@ -464,6 +737,68 @@ def m4gpModel(config, Model, Coef, Intercep) :
                 tmpArr.append(gene)
                 stackModel.put(tmpArr)
             # End if
+
+          # ********* Es un Sumatoria, Producto ************/
+        elif ((gene == OP_SUM) or (gene == OP_PRD) ) :
+            tmpArr = []
+            if (not stackModel.empty()) :
+                while(stackModel.qsize() > 0 ) :
+                    #print("M4gp Encontro expresion: ")
+                    tmp = stackModel.get() # Se obtiene la ultima expresion de la pila de expresiones
+                    #print(tmp)
+                
+                    tmpArr.append(tmp)
+
+                    if (stackModel.qsize() > 0 and gene == OP_SUM ) :
+                        tmpArr.append(OP_ADD)
+                    if (stackModel.qsize() > 0 and gene == OP_PRD ) :
+                        tmpArr.append(OP_MUL)
+                #end while
+
+                stackModel.put(tmpArr)
+            #end if
+
+          # ********* Promedio ************/
+        elif (gene == OP_AVG) :
+            tmpArr = []
+            if (not stackModel.empty()) :
+                nSize = stackModel.qsize()
+                while(stackModel.qsize() > 0 ) :
+                    #print("M4gp AVG Encontro expresion: ")
+                    tmp = stackModel.get() # Se obtiene la ultima expresion de la pila de expresiones
+                    #print(tmp)
+                
+                    tmpArr.append(tmp)
+                    if (stackModel.qsize() > 0 ) :
+                        tmpArr.append(OP_ADD)
+                #end while
+                tmpArr.append(nSize)
+                tmpArr.append(OP_DIV)
+                
+                stackModel.put(tmpArr)
+            #end if
+
+          # ********* Promedio, Desv Standard ************/
+        elif (gene == OP_SDV) :
+            tmpArr = []
+            if (not stackModel.empty()) :
+                nSize = stackModel.qsize()
+                while(stackModel.qsize() > 0 ) :
+                    #print("M4gp SDV Encontro expresion: ")
+                    tmp = stackModel.get() # Se obtiene la ultima expresion de la pila de expresiones
+                    #print(tmp)
+                
+                    tmpArr.append(tmp)
+                    if (stackModel.qsize() > 0 ) :
+                        tmpArr.append(OP_ADD)
+                #end while
+                tmpArr.append(nSize)
+                tmpArr.append(OP_DIV)
+
+
+                stackModel.put(tmpArr)
+            #end if
+                                  
         elif (gene == OP_NOOP) :  # Es NoOP, no hacemos nada
             if (not stackModel.empty()) :
                 g1 = g1
@@ -484,7 +819,7 @@ def m4gpBuildExpr(tmp1, nvoModel) :
         for k in range(lenTmp):
             tmp4 = tmp1[lenTmp-k-1]
             nvoModel = m4gpBuildExpr(tmp4, nvoModel)
-        nvoModel.append(-10001)
+        nvoModel.append(OP_ADD)
     # End for
     else :    
         nvoModel.insert(0,tmp1)
