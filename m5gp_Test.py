@@ -33,7 +33,7 @@ y_train = dataset.iloc[:nrows, nvar-1].to_numpy().astype(np.float32)
 
 Operadores = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs", "sum","prod", "avg", "std"]
 #Operadores = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs"]
-
+#Operadores = ["m"]
 
 print('Running m5gp ...')  
  

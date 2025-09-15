@@ -141,14 +141,22 @@ class m5gpRegressor(BaseEstimator):
 
     # Verifica los operadores validos y construye el diccionario a utilizar
     # para generar la poblacion inicial
-
+    if (len(self.operators_list) == 0):
+      print("No se definieron operadores")
+      exit(0)
+    
     self.diccionario_ops = gpG.construir_diccionario_op(operators_list)
+    if (len(self.diccionario_ops) == 0):
+      print("No se especificaron operadores validos")
+      exit(0)
+    
     print(self.diccionario_ops)
 
     fName = "M5GP_OpS.csv"
     if os.path.exists(fName):
         os.remove(fName)
     return
+
 
   #This method implement the evolution with M5GP  
   def fit(self, X_train, y_train):
