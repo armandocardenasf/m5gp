@@ -84,7 +84,6 @@ est = m5gp(
 #est.getModelExpr(Model)
 #exit(0)
 
-
 #ea.cudacapabilities()
 
 est.fit(x_train, y_train)
