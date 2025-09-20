@@ -57,12 +57,13 @@ OP_SDV = -10013 # Standard deviation operator
 # Si hay nuevos operadores/funciones, ponerlas en este espacio,
 # entre el ultimo operador agregado y OP_END.
 # ***************************************************************
-
+OP_TAN = -10014 # Tan Operator
+OP_TANH =  -10015 # Tan Hyperbolic Operator
 
 # ***************************************************************
 # Si se agrega un nuevo operador, incrementar el valor de OP_END
 # ***************************************************************
-OP_END = -10014 # Final operator
+OP_END = -10016 # Final operator
 OP_IF = OP_END
 
 # ***************************************************************
@@ -91,6 +92,8 @@ OPERADORES_MASTER = {
     "prd": OP_PRD, # Product operator
     "avg": OP_AVG, # Average operator
     "std": OP_SDV, # Standard deviation operator
+    "tan": OP_TAN, # Tangent operator
+    "tanh": OP_TANH, # Tangent hyperbolic operador"
     "if": OP_IF # Conditional operator
 }
 
@@ -261,6 +264,8 @@ def getIndividualExpr(config,
     numOpPrd = 0
     numOpAvg = 0
     numOpSdv = 0
+    numOpTan = 0
+    numOpTanH = 0
     Expr = ""
 
     var_ini = math.fabs(VAR_INI)
@@ -312,6 +317,13 @@ def getIndividualExpr(config,
         elif (gene == OP_SDV) :
             numOpAbs = numOpSdv +1
             Expr = Expr + "SDV\t"
+
+        elif (gene == OP_TAN) :
+            numOpAbs = numOpTan +1
+            Expr = Expr + "tan\t"
+        elif (gene == OP_TANH) :
+            numOpAbs = numOpTanH +1
+            Expr = Expr + "tanh\t"
 
         elif ((gene == OP_IFE) or (gene == OP_IFG) or (gene == OP_IFL)) :
             numOpIf = numOpIf + 1
@@ -372,6 +384,10 @@ def getGeneExp(config, gene) :
     elif (gene == OP_SDV) :
         Expr += "sdv"
 
+    elif (gene == OP_TAN) :
+        Expr += "tan"
+    elif (gene == OP_TANH) :
+        Expr += "tanh"
 
     elif ((gene <= VAR_INI) and ((gene >= maxVar)) and (gene.is_integer())) :
         Expr += "X_"
@@ -446,8 +462,8 @@ def getStackModelExpr(config, Model) :
                 # End if
             # End if
 
-        # ********* Es un operador de seno, coseno, exponente, logaritmo y absoluto ************/
-        elif ((gene ==  OP_SIN) or (gene == OP_COS) or (gene == OP_EXP)  or (gene == OP_ABS)) :
+        # ********* Es un operador de seno, coseno, exponente, logaritmo, absoluto, tangente, tangente hyperbolica ************/
+        elif ((gene ==  OP_SIN) or (gene == OP_COS) or (gene == OP_EXP)  or (gene == OP_ABS) or (gene == OP_TAN) or (gene == OP_TANH)) :
             if (not stackModel.empty()) :
                 tmp = stackModel.get()
                 strCont = tmp[0 : tmp.find(":")]
@@ -728,8 +744,8 @@ def m4gpModel(config, Model, Coef, Intercep) :
                 # End if
             # End if
 
-        # ********* Es un operador de seno, coseno, exponente, logaritmo y absoluto ************/
-        elif ((gene == OP_SIN) or (gene == OP_COS) or (gene == OP_EXP) or (gene == OP_LOG) or (gene == OP_ABS)) :
+        # ********* Es un operador de seno, coseno, exponente, logaritmo, absoluto, tangente, tangente hyperbolica ************/
+        elif ((gene == OP_SIN) or (gene == OP_COS) or (gene == OP_EXP) or (gene == OP_LOG) or (gene == OP_ABS) or (gene == OP_TAN) or (gene == OP_TANH)) :
             tmpArr = []
             if (not stackModel.empty()) :
                 tmp = stackModel.get()

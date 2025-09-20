@@ -64,6 +64,10 @@ def Truncate(f, n) :
 #def empty():
 #    return np.empty(5, np.float64)  # np.float64 instead of np.float
 
+@cuda.jit(device=True)
+def div_protegida_device(a, b, eps=1e-12):
+    bb = b if (b > eps or b < -eps) else (eps if b >= 0.0 else -eps)
+    return a / bb
 
 @cuda.jit(nopython=True)
 def zeros(max):
@@ -111,10 +115,7 @@ def initialize_population (cu_states,
 
 			numOp = (gpG.OP_END * (-1)) - 10000 + useOpIF - 1
 			op3 = 0
-			#opValue = gpG.OPERADORES.get(numOp)
 
-			#contiene_operador(operadores, op3)
-			#while(not (op3 in operadores.values())) :
 			while(not (contiene_operador(operadores, op3))) :
 				# Get Operator
 				op1 = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp) + 1			
@@ -144,13 +145,14 @@ def initialize_population (cu_states,
 		#elif ((prob > genOperatorProb) and (prob <= (genVariableProb+genOperatorProb))) :
 		elif ((prob < (genVariableProb+genOperatorProb))) :
             # Obtenemos la probabilidad de que sea una variable */
-			gene = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % (nvar)+1000) * (-1)
+			gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000) % (nvar)+1000) * (-1)
 			gene = Truncate(gene, 0)
 		#elif ((prob > (genVariableProb+genOperatorProb)) and (prob <= (genVariableProb+genOperatorProb+genConstantProb))) :
 		elif ((prob < (genVariableProb+genOperatorProb+genConstantProb))) :
             # Obtenemos la probabilidad de que sea una constante */
-			gene = ((xoroshiro128p_normal_float64(cu_states, tid)*1000)  % maxRandomConstant+1)
-			gene = Truncate(gene, 0)
+			#gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000)  % maxRandomConstant+1)
+			gene = ((xoroshiro128p_normal_float32(cu_states, tid))*maxRandomConstant  % maxRandomConstant)
+			#gene = Truncate(gene, 5)
 			prob = xoroshiro128p_uniform_float32(cu_states, tid)
             #  Probabilidad de que la constante sea positiva o negativa */
 			if (prob < 0.5) :
@@ -159,7 +161,7 @@ def initialize_population (cu_states,
             # Obtenemos la probabilidad de que sea un Operador NOOP */
 			gene = gpG.OP_NOOP 	# Obtenemos la probabilidad de que sea un Operador NOOP */
 
-		dInitialPopulation[tid*sizeMaxDepthIndividual+j] = int(gene)
+		dInitialPopulation[tid*sizeMaxDepthIndividual+j] = gene #int(gene)
 	# Fin del FOR
 	return
 
@@ -346,6 +348,7 @@ def compute_individuals(inputPopulation: np.ndarray,
 					tmp2 = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
 					if (not math.isnan(tmp) and not math.isinf(tmp) and not math.isnan(tmp2) and not math.isinf(tmp2)) :
 						out = tmp / math.sqrt(1 + (tmp2 * tmp2))
+						#out = div_protegida_device(tmp,tmp2, 1e-12) # division protegida
 						uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
 						pushGenes += 1							
 						if (model == 1) :
@@ -385,7 +388,33 @@ def compute_individuals(inputPopulation: np.ndarray,
 					if (model == 1) :
 						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
 						pushModel += 1	
-			continue					
+			continue	
+		# *************************** Es un operador de tangente ******************************/
+		elif (inputPop == gpG.OP_TAN) :   # Es tangente
+			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
+				pushGenes -=  1
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
+				if (not math.isnan(tmp) and not math.isinf(tmp)) :
+					out = math.tan(tmp)
+					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+					pushGenes += 1						
+					if (model == 1) :
+						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+						pushModel += 1	
+			continue
+		# *************************** Es un operador de tangente hyperbolica ******************************/
+		elif (inputPop == gpG.OP_TANH) :   # Es tangente hyperbolica
+			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
+				pushGenes -=  1
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
+				if (not math.isnan(tmp) and not math.isinf(tmp)) :
+					out = math.tanh(tmp)
+					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+					pushGenes += 1						
+					if (model == 1) :
+						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+						pushModel += 1	
+			continue
 		# *************************** Es un operador de exponente ******************************/
 		elif (inputPop == gpG.OP_EXP) :    # Es exponente
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
@@ -948,14 +977,16 @@ def umadMutation(cu_states,  # states
 				# 11 = Producto (* Future use)
 				# 12 = Promedio (* Future use)
 				# 13 = Desviacion Standard (* Future use)
+				# 14 = Tangente 
+				# 15 = Tangente Hyperbolica
 				# ***************************************************************
 				# Si hay nuevos operadores/funciones, ponerlas en este espacio,
 				# entre el ultimo operador agregado y los IF. Los IF incrementan
 				# su valor.
 				# ***************************************************************
-				# 10 = Operador IFMAYOR
-				# 11 = Operador IFMENOR
-				# 12 = Operador IFIGUAL
+				# 16 = Operador IFMAYOR
+				# 17 = Operador IFMENOR
+				# 18 = Operador IFIGUAL
 				# 99 = NOOP
 
 				numOp = (gpG.OP_END * (-1)) - 10000 + useOpIF - 1
@@ -996,8 +1027,10 @@ def umadMutation(cu_states,  # states
 				gene = Truncate(gene, 0)
 			elif ((prob < (genVariableProb+genOperatorProb+genConstantProb))) :
 				# Obtenemos la probabilidad de que sea una constante */
-				gene = ((xoroshiro128p_normal_float64(cu_states, tid)*1000)  % maxRandomConstant+1)
-				gene = Truncate(gene, 0)
+				#gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000)  % maxRandomConstant+1)
+				gene = ((xoroshiro128p_normal_float32(cu_states, tid))*maxRandomConstant  % maxRandomConstant)
+				#gene = Truncate(gene, 5)
+
 				prob = xoroshiro128p_uniform_float32(cu_states, tid)
 				#  Probabilidad de que la constante sea positiva o negativa */
 				if (prob < 0.5) :

@@ -35,8 +35,8 @@ hyper_params = [
             'generations' : (30,),
             'Individuals' : (256,),
             'GenesIndividuals' : (256,),
-            'mutationProb' : (0.1,),
-            'sizeTournament' : (0.1,),
+            'mutationProb' : (0.15,),
+            'sizeTournament' : (0.15,),
         },
         {
             'generations' : (50,),
@@ -47,12 +47,14 @@ hyper_params = [
         },    
         {
             'generations' : (50,),
-            'Individuals' : (128,),
+            'Individuals' : (256,),
             'GenesIndividuals' : (128,),
             'mutationProb' : (0.1,),
             'sizeTournament' : (0.15,),
         },                                  
     ]
+
+Operadores = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs", "sum","prod", "avg", "std"]
 
 # Create the pipeline for the model
 print('Running m5gp ...')
@@ -60,8 +62,8 @@ est = m5gp.m5gpRegressor(
             generations=30, # number of generations (limited by default)
             Individuals=256, # number of individuals
             GenesIndividuals=128, # number of genes per individual
-            mutationProb=0.1, # mutation rate probability
-            mutationDeleteRateProb=0.01,  # mutation delete rate probality
+            mutationProb=0.15, # mutation rate probability
+            mutationDeleteRateProb=0.05,  # mutation delete rate probality
             sizeTournament=0.15, # size of tournament
             evaluationMethod=2,  #error evaluation method 
                         # 0=RMSE, 
@@ -76,15 +78,17 @@ est = m5gp.m5gpRegressor(
                         # 9=MiniBatch ridge regularization 
                         #10=MiniBatch elasticnet regularization 
             maxRandomConstant=999, #number of constants (-maxRandomConstant to maxRandomConstant)
-            genOperatorProb=0.50, #probablity for generate Operators 
-            genVariableProb=0.39, #probablity for generate variables 
+            genOperatorProb=0.45, #probablity for generate Operators 
+            genVariableProb=0.40, #probablity for generate variables 
             genConstantProb=0.1, #probablity for generate constants
-            genNoopProb=0.01, #probablity for generate NOOP Operators 
-			useOpIF=0, #Set to '1' if use IF operator
+            genNoopProb=0.05, #probablity for generate NOOP Operators 
+			useOpIF=0, #Set if use IF operator
+            operators_list = Operadores, # Set of operators for include into individuals 
             log=1, #save log files
 			verbose=1, #Show menssages on execution
             logPath='log/' #path for logs
-)
+ )
+
 
 def complexity(est):
     print("Complexity:", est.get_n_nodes())

@@ -150,7 +150,7 @@ class m5gpRegressor(BaseEstimator):
       print("No se especificaron operadores validos")
       exit(0)
     
-    print(self.diccionario_ops)
+    #print(self.diccionario_ops)
 
     fName = "M5GP_OpS.csv"
     if os.path.exists(fName):
@@ -180,7 +180,7 @@ class m5gpRegressor(BaseEstimator):
     gpG.sizeTournament = math.ceil(self.sizeTournament * self.Individuals)
 
     # Define vectors to work on device 
-    self.model = np.zeros((self.GenesIndividuals ), dtype=np.int32) 
+    self.model = np.zeros((self.GenesIndividuals ), dtype=np.float32) 
 
     #print("Initialize Individual")
     # *************************** Initialize population ********************************* 
@@ -197,9 +197,9 @@ class m5gpRegressor(BaseEstimator):
                               self.diccionario_ops )
     # -- End of Initialize population --
 
-    #print("Individuals:")
-    #print(hInitialPopulation)
-    #return
+    # print("Individuals:")
+    # print(hInitialPopulation)
+    # return
   
     # ***************************  Compute Individuals  ****************************
     hOutIndividuals = [] 
@@ -218,6 +218,7 @@ class m5gpRegressor(BaseEstimator):
             self.nvar,
             0 )
     # ****************** End of Compute Individuals **********************
+    
     # Get the semantic matrix
     coefArr_p = []
     intercepArr_p = []    
@@ -365,7 +366,7 @@ class m5gpRegressor(BaseEstimator):
       gc.collect()
       
       
-      if hFitNew[indexBestIndividual_p] == 0 :
+      if hFitNew[indexBestIndividual_p] <= 0.00001 :
         break
     
     # ************* Fin de for (Ciclo Generacional) ****************
@@ -491,6 +492,10 @@ class m5gpRegressor(BaseEstimator):
   # Fin de def (fit)
 
   def predict(self, X_predict):
+    if (len(self.bestIndividual) == 0) :
+      print("No model available for predict")
+      return
+    
     print("Inicio predict: ", X_predict.shape)
 
     # Get number of data rows for predict
@@ -561,6 +566,10 @@ class m5gpRegressor(BaseEstimator):
   # Fin de def (predict)
 
   def best_individual(self):
+    if ((self.model == 0).all()) :
+      print("No model available")
+      return
+    
     if (self.evaluationMethod < 2 ) :
       model = self.model
     else :
@@ -611,6 +620,10 @@ class m5gpRegressor(BaseEstimator):
   # Fin de def (complexity) 
    
   def meanSquaredError(self, cY, YPred) :
+    # if (len(cY) == 0 or type(YPred == 'NoneType') or len(YPred) ==0):
+    #   print("Not cY or YPred providen")
+    #   return
+    
     npY = np.array(cY).astype('float32')
 
     npYPred = YPred
@@ -619,11 +632,19 @@ class m5gpRegressor(BaseEstimator):
     return mse
 
   def rmse(self, cY, YPred) :
+    # if (len(cY) == 0 or type(YPred == 'NoneType') or len(YPred) ==0):
+    #   print("Not cY or YPred providen")
+    #   return
+    
     mse = self.meanSquaredError(cY, YPred) 
     mse = math.sqrt(mse)
     return mse
    		
   def R2(self, cY, YPred):
+    # if (len(cY) == 0 or type(YPred == 'NoneType') or len(YPred) ==0):
+    #   print("Not cY or YPred providen")
+    #   return
+    
     r2 = r2_score(cY, YPred)
     return r2
   

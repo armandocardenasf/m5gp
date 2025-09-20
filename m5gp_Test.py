@@ -17,10 +17,21 @@ from sympy import symbols, Mul, simplify, count_ops
 
 #load the data
 #dataset = pd.DataFrame(pd.read_csv("/home/treelab/python-codes/data/Concrete/train_10107_1.txt" ,sep='\s+', header=None))
-#dataset = pd.DataFrame(pd.read_csv("/home/acardenasf/pmlb/datasets5/589_fri_c2_1000_25/589_fri_c2_1000_25.tsv" ,sep='\s+', header=None))
-dataset = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/test_10107_1.csv" ,sep=' ', header=None))
+#dataset = pd.DataFrame(pd.read_csv("/home/acardenasf/pmlb/datasets5/589_fri_c2_1000_25/589_fri_c2_1000_25.tsv" ,sep='/s+', header=None))
+#dataset = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/test_10107_1.csv" ,sep=' ', header=None))
+#dataset = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/207_autoPrice.tsv" ,sep='\t', header=None))
+dataset1 = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/344_mv.tsv" ,sep='\t', header=None))
 
-nrows = len(dataset.index)
+
+print("Leyo dataset")
+nrows = len(dataset1.index)
+if (nrows > 10000):
+    print("Hay mas de 10000")
+    #dataset1 = dataset1.iloc[:10000]  #o df.head(10000)
+    dataset1 = dataset1.sample(n=10000, random_state=42)
+
+dataset = dataset1
+
 nvar = dataset.shape[1] - 1
 #print("Leyo X")
 X = dataset.iloc[0:nrows, 0:nvar-1]
@@ -31,17 +42,17 @@ y_train = dataset.iloc[:nrows, nvar-1].to_numpy().astype(np.float32)
  
 #X_train, X_test, y_train, y_test = train_test_split(X,y,train_size=0.70,test_size=0.30,random_state=n)
 
-Operadores = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs", "sum","prod", "avg", "std"]
-#Operadores = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs"]
-#Operadores = ["m"]
+Operadores = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs", "sum","prod", "avg", "std"]
+#Operadores = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
+Operadores = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
 
 print('Running m5gp ...')  
  
 est = m5gp(
-            generations=500, # number of generations (limited by default)
-            Individuals=1024, # number of individuals
-            GenesIndividuals=500, # number of genes per individual
-            mutationProb=0.15, # mutation rate probability
+            generations=30, # number of generations (limited by default)
+            Individuals=256, # number of individuals
+            GenesIndividuals=128, # number of genes per individual
+            mutationProb=0.05, # mutation rate probability
             mutationDeleteRateProb=0.05,  # mutation delete rate probality
             sizeTournament=0.15, # size of tournament
             evaluationMethod=2,  #error evaluation method 
@@ -56,10 +67,10 @@ est = m5gp(
                         # 8=MiniBatch lasso regularization 
                         # 9=MiniBatch ridge regularization 
                         #10=MiniBatch elasticnet regularization 
-            maxRandomConstant=999, #number of constants (-maxRandomConstant to maxRandomConstant)
-            genOperatorProb=0.45, #probablity for generate Operators 
-            genVariableProb=0.40, #probablity for generate variables 
-            genConstantProb=0.1, #probablity for generate constants
+            maxRandomConstant=10, #number of constants (-maxRandomConstant to maxRandomConstant)
+            genOperatorProb=0.53, #probablity for generate Operators 
+            genVariableProb=0.37, #probablity for generate variables 
+            genConstantProb=0.05, #probablity for generate constants
             genNoopProb=0.05, #probablity for generate NOOP Operators 
 			useOpIF=0, #Set if use IF operator
             operators_list = Operadores, # Set of operators for include into individuals 

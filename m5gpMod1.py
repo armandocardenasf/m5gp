@@ -55,7 +55,7 @@ def initialize_population (
     # dInitialPopulation.copy_to_device(hInitialPopulation, stream=stream_h2d)
 
     #Old code
-    hInitialPopulation = np.zeros((gpG.sizePopulation), dtype=np.int32) 
+    hInitialPopulation = np.zeros((gpG.sizePopulation), dtype=np.float32) 
     dInitialPopulation = cuda.to_device(hInitialPopulation)
     dOperators = cuda.to_device(hOperators)
 
