@@ -54,15 +54,19 @@ hyper_params = [
         },                                  
     ]
 
-Operadores = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs", "sum","prod", "avg", "std"]
+functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs", "sum","prod", "avg", "std"]
+functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
+
+# from .src.m5gp import m5gp
+# from m5gp import m5gpRegressor as m5gp
 
 # Create the pipeline for the model
 print('Running m5gp ...')
-est = m5gp.m5gpRegressor(
+est = m5gp.m5gpRegressor( 
             generations=30, # number of generations (limited by default)
             Individuals=256, # number of individuals
             GenesIndividuals=128, # number of genes per individual
-            mutationProb=0.15, # mutation rate probability
+            mutationProb=0.1, # mutation rate probability
             mutationDeleteRateProb=0.05,  # mutation delete rate probality
             sizeTournament=0.15, # size of tournament
             evaluationMethod=2,  #error evaluation method 
@@ -77,18 +81,18 @@ est = m5gp.m5gpRegressor(
                         # 8=MiniBatch lasso regularization 
                         # 9=MiniBatch ridge regularization 
                         #10=MiniBatch elasticnet regularization 
-            maxRandomConstant=999, #number of constants (-maxRandomConstant to maxRandomConstant)
-            genOperatorProb=0.45, #probablity for generate Operators 
-            genVariableProb=0.40, #probablity for generate variables 
-            genConstantProb=0.1, #probablity for generate constants
+            scorer=0,
+            maxRandomConstant=10, #number of constants (-maxRandomConstant to maxRandomConstant)
+            genOperatorProb=0.53, #probablity for generate Operators 
+            genVariableProb=0.37, #probablity for generate variables 
+            genConstantProb=0.05, #probablity for generate constants
             genNoopProb=0.05, #probablity for generate NOOP Operators 
 			useOpIF=0, #Set if use IF operator
-            operators_list = Operadores, # Set of operators for include into individuals 
+            functions_set = functions_set, # Set of operators for include into individuals 
             log=1, #save log files
 			verbose=1, #Show menssages on execution
             logPath='log/' #path for logs
  )
-
 
 def complexity(est):
     print("Complexity:", est.get_n_nodes())

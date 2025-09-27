@@ -19,6 +19,7 @@ import math
 import numpy as np
 import ctypes
 import m5gpGlobals as gpG
+import m5gpMod2 as gpM2
 
 def get_gpu_memory_info():
     free = ctypes.c_size_t()
@@ -932,7 +933,8 @@ def umadMutation(cu_states,  # states
 			genConstantProb, 
 			genNoopProb, 
 			useOpIF,
-			operadores) :
+			operadores,
+			cdf) :
 
 	tid = cuda.grid(1)
 	#tid = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x
@@ -1020,6 +1022,12 @@ def umadMutation(cu_states,  # states
 					#gene = ((op * (-1)) + gpG.OP_INI)
 					gene = op3
 				#Fin de If
+
+				# operador ponderado
+				#u2 = _rand_u01()
+				u2 = xoroshiro128p_uniform_float32(cu_states, tid)
+				j = gpM2._searchsorted_left(cdf, u2)
+				gene = int(operadores[j])
 
 			elif ((prob < (genVariableProb+genOperatorProb))) :
 				# Obtenemos la probabilidad de que sea una variable */

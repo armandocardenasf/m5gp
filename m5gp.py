@@ -23,16 +23,16 @@ import torch
 from numba import cuda
 from numba.cuda.random import (create_xoroshiro128p_states,
                                xoroshiro128p_uniform_float32)
-import rmm
-from rmm.allocators.cupy import rmm_cupy_allocator
+# import rmm 
+# from rmm.allocators.cupy import rmm_cupy_allocator
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.abspath(this_dir))
 import m5gpGlobals as gpG
-import m5gpGlobals as gpF
 import m5gpCudaMethods as gpCuda
 import m5gpCumlMethods as gpCuM
-import m5gpMod1 as gp2
+import m5gpMod1 as gpM1
+import m5gpMod2 as gpM2
 
 
 class m5gpRegressor(BaseEstimator):
@@ -42,21 +42,21 @@ class m5gpRegressor(BaseEstimator):
             Individuals=500, 
             GenesIndividuals=1024, 
             mutationProb=0.15, 
-            mutationDeleteRateProb=0.01,  
-            evaluationMethod=0, 
+            mutationDeleteRateProb=0.01, 
+            sizeTournament=0.20,  
+            evaluationMethod=0,        
             scorer=0,  
-            sizeTournament=0.20, 
             maxRandomConstant=5, 
             genOperatorProb=0.54, 
             genVariableProb=0.35, 
             genConstantProb=0.10, 
             genNoopProb=0.001,  
             useOpIF=0,
-            operators_list = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs", "sum","prod", "avg", "std"],   
+            functions_set = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs", "sum","prod", "avg", "std"],   
             log=1, 
             verbose=1, 
-            logPath='log/',
-            function_set = '' ):
+            logPath='log/'
+            ):
 
     env = dict(os.environ)
     self.generations = generations
@@ -73,14 +73,13 @@ class m5gpRegressor(BaseEstimator):
     self.genConstantProb=genConstantProb 
     self.genNoopProb=genNoopProb  
     self.useOpIF=useOpIF
-    self.operators_list = operators_list
     self.nvar=0 
     self.nrowTrain=0 
     self.nrowTest=0
     self.log=log
     self.verbose=verbose
     self.logPath=logPath
-    self.function_set=function_set
+    self.functions_set=functions_set
     self.model = ''
     self.m4gpModel = ''
     self.cuModel = 0
@@ -88,7 +87,7 @@ class m5gpRegressor(BaseEstimator):
 
     print("Initializing m5gp")
 
-    # Check if CUDA is available
+    # Check if CUDA and Device GPU are available
     if torch.cuda.is_available():
       # Get the device name
       device = torch.cuda.get_device_name(0)
@@ -120,37 +119,28 @@ class m5gpRegressor(BaseEstimator):
       print(f"Free GPU memory : { gpG.free_mem / (1024**3):.2f} GB")
 
       # Pool de memoria (ajusta tamaño al GPU)
-      allocMem =  int((gpG.gpu_memory / (1024**3)) - 1)
-      rmm.reinitialize(pool_allocator=True, initial_pool_size=allocMem<<30)  # 5 GB
-      cp.cuda.set_allocator(rmm_cupy_allocator)
+      # allocMem =  int((gpG.gpu_memory / (1024**3)) - 1)
+      # rmm.reinitialize(pool_allocator=True, initial_pool_size=allocMem<<30)  # 5 GB
+      # cp.cuda.set_allocator(rmm_cupy_allocator)
 
     else:
       print("CUDA is not available.")
       return
 
-
-    # Usign pycuda, get GPU device memory information
-    # gpG.pycudasetup()
-    # gpG.gpu_memory = gpG.pycuda.mem_get_info()
-    # gpG.free_mem = gpG.gpu_memory[0]
-    # print("Initial memory info:")
-    # print("GPU Memory: ", gpG.gpu_memory)
-    # print("Free Memory: ", gpG.free_mem)
-    # gpG.pycuda_finish()
-
-
     # Verifica los operadores validos y construye el diccionario a utilizar
     # para generar la poblacion inicial
-    if (len(self.operators_list) == 0):
+    if (len(self.functions_set) == 0):
       print("No se definieron operadores")
       exit(0)
     
-    self.diccionario_ops = gpG.construir_diccionario_op(operators_list)
-    if (len(self.diccionario_ops) == 0):
+    # Get valid functions (mathematical operators) allowed for generate individuals
+    self.valid_functions_set = gpG.construir_lista_operadores_validos(self.functions_set)
+    if (len(self.valid_functions_set) == 0):
       print("No se especificaron operadores validos")
       exit(0)
     
-    #print(self.diccionario_ops)
+    # print("valid_functions_set")
+    # print(self.valid_functions_set)
 
     fName = "M5GP_OpS.csv"
     if os.path.exists(fName):
@@ -160,6 +150,21 @@ class m5gpRegressor(BaseEstimator):
 
   #This method implement the evolution with M5GP  
   def fit(self, X_train, y_train):
+    # Normalizar Probabilidades por seguridad
+    totalProb = self.genOperatorProb + self.genVariableProb + self.genConstantProb + self.genNoopProb
+    if totalProb <= 0.0:
+          # fallback razonable
+      p_op_n, p_var_n, p_const_n, p_noop_n = 0.53, 0.37, 0.05, 0.05
+    else:
+      inv = 1.0 / totalProb
+      p_op_n, p_var_n, p_const_n, p_noop_n = self.genOperatorProb*inv, self.genVariableProb*inv, self.genConstantProb*inv, self.genNoopProb*inv
+
+    self.genOperatorProb=p_op_n 
+    self.genVariableProb=p_var_n 
+    self.genConstantProb=p_const_n 
+    self.genNoopProb=p_noop_n  
+
+    # Set train data (x, y)
     self.X_train = X_train
     self.y_train = y_train
     # train data    
@@ -184,7 +189,7 @@ class m5gpRegressor(BaseEstimator):
 
     #print("Initialize Individual")
     # *************************** Initialize population ********************************* 
-    hInitialPopulation = gp2.initialize_population(
+    hInitialPopulation = gpM1.initialize_population(
                               self.Individuals,
                               self.nvar,
                               self.GenesIndividuals,
@@ -194,7 +199,7 @@ class m5gpRegressor(BaseEstimator):
                               self.genConstantProb,
                               self.genNoopProb,
                               self.useOpIF,
-                              self.diccionario_ops )
+                              self.valid_functions_set )
     # -- End of Initialize population --
 
     # print("Individuals:")
@@ -209,7 +214,7 @@ class m5gpRegressor(BaseEstimator):
   
 
     #print ("Compute Individual")
-    hOutIndividuals, hStack, hStackIdx, hStackModel = gp2.compute_individuals(
+    hOutIndividuals, hStack, hStackIdx, hStackModel = gpM1.compute_individuals(
             hInitialPopulation,
             X_train,
             self.Individuals,
@@ -238,7 +243,7 @@ class m5gpRegressor(BaseEstimator):
 
     #print("Compute Error")
     # ***************************** Compute ERROR ***********************************
-    hFit, indexBestOffspring, indexWorstOffspring, coefArr_p, intercepArr_p, cuModel_p = gp2.ComputeError(self,
+    hFit, indexBestOffspring, indexWorstOffspring, coefArr_p, intercepArr_p, cuModel_p = gpM1.ComputeError(self,
                 hOutIndividuals, 
                 y_train, 
                 self.Individuals, 
@@ -260,6 +265,22 @@ class m5gpRegressor(BaseEstimator):
     trainFit = hFit[indexBestIndividual_p] - ajFit    
     print("Initial Index:", indexBestIndividual_p, " Initial Fit:", trainFit)
 
+
+    #pesos = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
+    #pesos = {op: 1/len(self.valid_functions_set) for op in self.valid_functions_set}
+    pesos_por_id = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
+    op_weights = np.array([pesos_por_id[int(oid)] for oid in self.valid_functions_set], dtype=np.float32)
+      # Prepara la CDF una vez por generación (Numba)
+    cdf = gpM2.preparar_sampler_operadores_rapido_numba(
+        op_ids=self.valid_functions_set, op_weights=op_weights,
+        epsilon=0.02, temperatura=1.0
+    )
+    
+    # print("Pesos iniciales")
+    # print(pesos_por_id)
+    # print(op_weights)
+    # print(cdf)
+
     # ***********************************************************************
     # ********************* GP Process Generation Cycle *********************
     # ***********************************************************************
@@ -275,7 +296,7 @@ class m5gpRegressor(BaseEstimator):
 
       #print("Torneo")
       # *********************  Select Tournament  **********************
-      hNewPopulation, hBestParentsTournament = gp2.select_tournament(
+      hNewPopulation, hBestParentsTournament = gpM1.select_tournament(
                     hInitialPopulation,
                     hFit,
                     self.Individuals, 
@@ -283,14 +304,15 @@ class m5gpRegressor(BaseEstimator):
 
       #print("Mutacion")
       # *********************  UMAD Mutation  **********************
-      hNewPopulation = gp2.umadMutation(self,
+      hNewPopulation = gpM1.umadMutation(self,
                                   hInitialPopulation,
                                   hBestParentsTournament,
-                                  self.Individuals) 
+                                  self.Individuals,
+                                  cdf) 
 
       #print (hNewPopulation)
       # ***************************  Compute Individuals  ****************************
-      hOutIndividuals, hStack, hStackIdx, hStackModel = gp2.compute_individuals(
+      hOutIndividuals, hStack, hStackIdx, hStackModel = gpM1.compute_individuals(
               hNewPopulation,
               X_train,
               self.Individuals,
@@ -300,7 +322,7 @@ class m5gpRegressor(BaseEstimator):
               0 )
       
       # ***************************** Compute ERROR ***********************************
-      hFitNew, indexBestOffspring, indexWorstOffspring, coefArrNew, intercepArrNew, cuModelNew = gp2.ComputeError(self,
+      hFitNew, indexBestOffspring, indexWorstOffspring, coefArrNew, intercepArrNew, cuModelNew = gpM1.ComputeError(self,
               hOutIndividuals, 
               y_train, 
               self.Individuals, 
@@ -309,11 +331,38 @@ class m5gpRegressor(BaseEstimator):
               hStackIdx,
               self.evaluationMethod)
 
+      oldFit = hFit[indexBestIndividual_p]
+      newFit = hFitNew[indexBestOffspring]
+
       #print("hFit:", hFit[indexBestIndividual_p], " indexBestIndividual_p:", indexBestIndividual_p)
       #print("hFitNew:", hFitNew[indexBestOffspring], " indexBestOffspring:", indexBestOffspring)
 
+      # *********************** FUNTIONS WEIGHT EVALUATION ***********************
+
+      # Mejor individuo de la nueva generacion (BestOffspring)
+      idx_a1 = indexBestOffspring * self.GenesIndividuals
+      idx_b1 = indexBestOffspring * self.GenesIndividuals + self.GenesIndividuals
+      mBestIndividual = hNewPopulation[idx_a1:idx_b1]
+
+      #pesos = gpG.actualizar_pesos_por_fitness(ops, pesos, best, fit_prev=0.48, fit_curr=0.52, lower_is_better=True)
+      #pesos = gpG.actualizar_pesos_por_fitness(self.valid_functions_set, pesos, mBestIndividual, fit_prev=0.48, fit_curr=0.52, lower_is_better=True)
+      pesos_por_id = gpM2.actualizar_pesos_operadores(pesos_por_id, mBestIndividual, oldFit, newFit, self.valid_functions_set)
+      op_weights = np.array([pesos_por_id[int(oid)] for oid in self.valid_functions_set], dtype=np.float32)
+
+      # print(mBestIndividual)
+      # print(self.valid_functions_set)
+      # print(pesos_por_id)
+      # print(op_weights)
+
+      # Prepara la CDF una vez por generación (Numba)
+      cdf = gpM2.preparar_sampler_operadores_rapido_numba(
+          op_ids=self.valid_functions_set, op_weights=op_weights,
+          epsilon=0.02, temperatura=1.0
+      )
+      #print(cdf)
+
       # *********************** NEW SURVIVAL (Elitist) ***********************
-      hNewPopulation, indexBestIndividual_p, coefArr_p, intercepArr_p, cuModel_p, stackBestModel_p = gp2.Survival(self,
+      hNewPopulation, indexBestIndividual_p, coefArr_p, intercepArr_p, cuModel_p, stackBestModel_p = gpM1.Survival(self,
               indexBestIndividual_p,
               indexBestOffspring,
               indexWorstOffspring,
@@ -331,9 +380,8 @@ class m5gpRegressor(BaseEstimator):
               stackBestModelNew)
       # *********************** END NEW SURVIVAL ***********************
 
-
       # ***********************    NEW REPLACE   ***********************
-      hInitialPopulation, hFit = gp2.replace(self,
+      hInitialPopulation, hFit = gpM1.replace(self,
                       hInitialPopulation,
                       hNewPopulation, 
                       hFit,
@@ -341,6 +389,7 @@ class m5gpRegressor(BaseEstimator):
       # *********************** END NEW REPLACE ***********************
       #print (hInitialPopulation)
       
+
 			# Validate Best Individual with Test file for generation
 			#/*trainFit = checkFitness(config, handle, dataFile, dInitialPopulation, indexBestIndividual_p, 0);*/
       ajFit = 0
@@ -371,6 +420,13 @@ class m5gpRegressor(BaseEstimator):
     
     # ************* Fin de for (Ciclo Generacional) ****************
 
+    # print(mBestIndividual)
+    print("Operadores validos:")
+    print(self.valid_functions_set)
+    #print(pesos_por_id)
+    print("Pesos:")
+    print(op_weights)
+
     # Obtenemos el mejor individuo
     idx_a1 = indexBestIndividual_p * self.GenesIndividuals
     idx_b1 = indexBestIndividual_p * self.GenesIndividuals + self.GenesIndividuals
@@ -397,7 +453,7 @@ class m5gpRegressor(BaseEstimator):
       #print(X_train2)
 
       #sacamos el mejor modelo del stack de expresiones 
-      stackBestModel_p = gp2.getStackBestModel(
+      stackBestModel_p = gpM1.getStackBestModel(
                   self.bestIndividual,
                   X_train,
                   self.Individuals,
@@ -507,7 +563,7 @@ class m5gpRegressor(BaseEstimator):
     GenesIndiv = hModelPopulation.shape[0] # self.GenesIndividuals
 
     # ***************************  Compute Individuals  ****************************
-    hOutIndividuals, hStack, hStackIdx, hStackModel = gp2.compute_individuals(
+    hOutIndividuals, hStack, hStackIdx, hStackModel = gpM1.compute_individuals(
             hModelPopulation,
             hDataPredict,
             numIndividuals,
@@ -518,7 +574,7 @@ class m5gpRegressor(BaseEstimator):
 
     y_pred=[]
 
-    stackBestModel_p = gp2.getStackBestModel(
+    stackBestModel_p = gpM1.getStackBestModel(
                 hModelPopulation,
                 X_predict,
                 numIndividuals,

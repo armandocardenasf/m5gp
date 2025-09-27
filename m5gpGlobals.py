@@ -16,6 +16,7 @@ import atexit
 from numba import cuda
 import ctypes
 
+
 # from   pycuda.compiler import SourceModule
 # import pycuda.driver as cuda
 # import pycuda.gpuarray as gpuarray
@@ -170,7 +171,7 @@ def WriteCSV_OpS(nFun, elapsed,Ops, fCreate=False) :
 def Truncate(f, n) :
     return math.floor(f * 10 ** n) / 10 ** n
 
-def construir_diccionario_op(operadores_deseados):
+def construir_lista_operadores_validos(operadores_deseados):
        
     # Construir una lista solo con los operadores solicitados
     diccionario_resultado = [OPERADORES_MASTER[op] for op in operadores_deseados if op in OPERADORES_MASTER]
@@ -840,3 +841,4 @@ def m4gpBuildExpr(tmp1, nvoModel) :
     else :    
         nvoModel.insert(0,tmp1)
     return nvoModel
+

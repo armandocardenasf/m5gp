@@ -484,7 +484,8 @@ def select_tournament(
 def umadMutation(self,
                  hInitialPopulation,
                  hBestParentsTournament,
-                 numIndividuals) :
+                 numIndividuals,
+                 h_cdf) :
        
     MaxOcup = gpCuda.gpuMaxUseProc(numIndividuals)
     blocksize = MaxOcup["BlockSize"]
@@ -498,7 +499,8 @@ def umadMutation(self,
     dNewPopulation = cuda.to_device(hNewPopulation)
     dInitialPopulation = cuda.to_device(hInitialPopulation)
     dBestParentsTournament = cuda.to_device(hBestParentsTournament)
-    dOperators = cuda.to_device(self.diccionario_ops)
+    dOperators = cuda.to_device(self.valid_functions_set)
+    d_cdf = cuda.to_device(h_cdf)
 
     start_time = time.time()
     gpCuda.umadMutation[blocksize, gridsize](cu_states,
@@ -517,7 +519,8 @@ def umadMutation(self,
                         self.genConstantProb,
                         self.genNoopProb,
                         self.useOpIF,
-                        dOperators)
+                        dOperators,
+                        d_cdf)
 
     hNewPopulation = dNewPopulation.copy_to_host()
 
