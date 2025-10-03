@@ -82,6 +82,59 @@ def contiene_operador(arr, val):
     return False
 
 @cuda.jit
+def gen_rand_const_in_range(cu_states, tid, maxRandomConstant: float) -> float:
+	# Asegura rango simétrico aún si R < 0
+	r = abs(maxRandomConstant)
+
+	# u = xoroshiro128p_uniform_float32(cu_states, tid)
+	# c = (2.0 * u - 1.0) * r
+	# if (c == 0):
+	# 	c = 333
+
+	c = ((xoroshiro128p_normal_float32(cu_states, tid)) * r  % r)	
+	
+	# #  Probabilidad de que la constante sea positiva o negativa */
+	prob = xoroshiro128p_uniform_float32(cu_states, tid)
+	if (prob < 0.5) :
+		c = c * (-1)  
+	return c
+
+@cuda.jit
+def gen_rand_variable(cu_states, tid, nvar: float) -> float:
+	# Obtenemos la probabilidad de que sea una variable */
+	gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000) % (nvar)+1000) * (-1)
+	gene = Truncate(gene, 0)
+
+	return gene
+
+@cuda.jit
+def gen_rand_operator(cu_states, tid, operadores, cdf: np.ndarray, useOpIF) -> float:
+	# operador ponderado
+	u2 = xoroshiro128p_uniform_float32(cu_states, tid)
+	j = gpM2._searchsorted_left(cdf, u2)
+	op3 = operadores[j]
+
+
+	if (op3 == gpG.OP_IFG and useOpIF == 1) :   # Fue un IF
+		# Fue un IF, obtenemos la condicion de manera aleatoria
+		cond = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % 3) + 1
+		cond = Truncate(cond, 0)
+		if (cond == 1) : # IFMAYOR
+			op3 = gpG.OP_IFG 
+		elif (cond == 2) : # IFMENOR
+			op3 = gpG.OP_IFL
+		elif (cond == 3) : # IFIGUAL
+			op3 = gpG.OP_IFE
+		else :
+			op3 = gpG.OP_NOOP # 13 - NOOP
+		gene = op3
+	else :
+		#gene = ((op * (-1)) + gpG.OP_INI)
+		gene = op3
+	#Fin de If
+	return gene
+
+@cuda.jit
 def initialize_population (cu_states,
         dInitialPopulation: np.ndarray,
         numIndividuals: np.int32,
@@ -93,7 +146,8 @@ def initialize_population (cu_states,
         genConstantProb: np.int32,
         genNoopProb: np.int32,
         useOpIF: np.int32,
-		operadores: np.ndarray) :
+		operadores: np.ndarray,
+		cdf: np.ndarray) :
 
     #const unsigned int tid = threadIdx.x+blockIdx.x*blockDim.x 
 	tid = cuda.grid(1)
@@ -114,50 +168,58 @@ def initialize_population (cu_states,
 		if (prob < genOperatorProb) :
             # Es un Operador
 
-			numOp = (gpG.OP_END * (-1)) - 10000 + useOpIF - 1
-			op3 = 0
+			# numOp = (gpG.OP_END * (-1)) - 10000 + useOpIF - 1
+			# op3 = 0
 
-			while(not (contiene_operador(operadores, op3))) :
-				# Get Operator
-				op1 = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp) + 1			
-				op2 = Truncate(op1, 0)
-				op3 = ((op2 * (-1)) + gpG.OP_INI)
-			 #Fin de While
+			# while(not (contiene_operador(operadores, op3))) :
+			# 	# Get Operator
+			# 	op1 = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp) + 1			
+			# 	op2 = Truncate(op1, 0)
+			# 	op3 = ((op2 * (-1)) + gpG.OP_INI)
+			#  #Fin de While
 
-			#if (op == (gpG.OP_IFG * (-1))-10000  and useOpIF == 1) :   # Fue un IF
-			if (op3 == gpG.OP_IFG  and useOpIF == 1) :   # Fue un IF
-				# Fue un IF, obtenemos la condicion de manera aleatoria
-				cond = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % 3) + 1
-				cond = Truncate(cond, 0)
-				#cond = Truncate(cond, 0)
-				if (cond == 1) : # IFMAYOR
-					op3 = gpG.OP_IFG 
-				elif (cond == 2) : # IFMENOR
-					op3 = gpG.OP_IFL
-				else : # IFIGUAL
-					op3 = gpG.OP_IFE	
-				gene = op3	
-			else :
-				#gene = ((op * (-1)) + gpG.OP_INI)
-				gene = op3
-			#Fin de if
-            #Fin de While
+			# #if (op == (gpG.OP_IFG * (-1))-10000  and useOpIF == 1) :   # Fue un IF
+			# if (op3 == gpG.OP_IFG  and useOpIF == 1) :   # Fue un IF
+			# 	# Fue un IF, obtenemos la condicion de manera aleatoria
+			# 	cond = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % 3) + 1
+			# 	cond = Truncate(cond, 0)
+			# 	#cond = Truncate(cond, 0)
+			# 	if (cond == 1) : # IFMAYOR
+			# 		op3 = gpG.OP_IFG 
+			# 	elif (cond == 2) : # IFMENOR
+			# 		op3 = gpG.OP_IFL
+			# 	else : # IFIGUAL
+			# 		op3 = gpG.OP_IFE	
+			# 	gene = op3	
+			# else :
+			# 	#gene = ((op * (-1)) + gpG.OP_INI)
+			# 	gene = op3
+			# #Fin de if
+            # #Fin de While
+
+			gene = gen_rand_operator(cu_states, tid, operadores, cdf, useOpIF) 
 
 		#elif ((prob > genOperatorProb) and (prob <= (genVariableProb+genOperatorProb))) :
 		elif ((prob < (genVariableProb+genOperatorProb))) :
             # Obtenemos la probabilidad de que sea una variable */
-			gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000) % (nvar)+1000) * (-1)
-			gene = Truncate(gene, 0)
+			# gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000) % (nvar)+1000) * (-1)
+			# gene = Truncate(gene, 0)
+
+			gene = gen_rand_variable(cu_states, tid, nvar)
+
 		#elif ((prob > (genVariableProb+genOperatorProb)) and (prob <= (genVariableProb+genOperatorProb+genConstantProb))) :
 		elif ((prob < (genVariableProb+genOperatorProb+genConstantProb))) :
             # Obtenemos la probabilidad de que sea una constante */
-			#gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000)  % maxRandomConstant+1)
-			gene = ((xoroshiro128p_normal_float32(cu_states, tid))*maxRandomConstant  % maxRandomConstant)
-			#gene = Truncate(gene, 5)
-			prob = xoroshiro128p_uniform_float32(cu_states, tid)
-            #  Probabilidad de que la constante sea positiva o negativa */
-			if (prob < 0.5) :
-				gene = gene * (-1)         
+
+			# #gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000)  % maxRandomConstant+1)
+			# gene = ((xoroshiro128p_normal_float32(cu_states, tid))*maxRandomConstant  % maxRandomConstant)
+			# #gene = Truncate(gene, 5)
+			# prob = xoroshiro128p_uniform_float32(cu_states, tid)
+            # #  Probabilidad de que la constante sea positiva o negativa */
+			# if (prob < 0.5) :
+			# 	gene = gene * (-1)         
+
+			gene = gen_rand_const_in_range(cu_states, tid, maxRandomConstant)
 		else :
             # Obtenemos la probabilidad de que sea un Operador NOOP */
 			gene = gpG.OP_NOOP 	# Obtenemos la probabilidad de que sea un Operador NOOP */
@@ -442,10 +504,14 @@ def compute_individuals(inputPopulation: np.ndarray,
 					if (tmp < 0):
 						tmp = math.fabs(tmp)
 					
-					if (tmp > 0) :
-						out = math.log(tmp) 
-					else :
-						out = 0
+					# if (tmp == 0):
+					e = 0.000000001
+					out = math.log(tmp + e) 
+
+					# if (tmp > 0) :
+					# 	out = math.log(1 + tmp) 
+					# else :
+					# 	out = 333
 					
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
 					pushGenes += 1							
@@ -991,63 +1057,78 @@ def umadMutation(cu_states,  # states
 				# 18 = Operador IFIGUAL
 				# 99 = NOOP
 
-				numOp = (gpG.OP_END * (-1)) - 10000 + useOpIF - 1
+				# numOp = (gpG.OP_END * (-1)) - 10000 + useOpIF - 1
 				op3 = 0
 
-				#op1 = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp) + 1
-				#op = Truncate(op1, 0)
 
-				while(not (contiene_operador(operadores, op3))) :
-					# Get Operator
-					op1 = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp) + 1			
-					op2 = Truncate(op1, 0)
-					op3 = ((op2 * (-1)) + gpG.OP_INI)
-				#Fin de While
+				# while(not (contiene_operador(operadores, op3))) :
+				# 	# Get Operator
+				# 	op1 = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % numOp) + 1			
+				# 	op2 = Truncate(op1, 0)
+				# 	op3 = ((op2 * (-1)) + gpG.OP_INI)
+				# #Fin de While
+
+
 				
+				# # operador ponderado
+				# u2 = xoroshiro128p_uniform_float32(cu_states, tid)
+				# j = gpM2._searchsorted_left(cdf, u2)
+				# op3 = operadores[j]
 
-				if (op3 == gpG.OP_IFG and useOpIF == 1) :   # Fue un IF
-					# Fue un IF, obtenemos la condicion de manera aleatoria
-					cond = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % 3) + 1
-					cond = Truncate(cond, 0)
-					if (cond == 1) : # IFMAYOR
-						op3 = gpG.OP_IFG 
-					elif (cond == 2) : # IFMENOR
-						op3 = gpG.OP_IFL
-					elif (cond == 3) : # IFIGUAL
-						op3 = gpG.OP_IFE
-					else :
-						op3 = gpG.OP_NOOP # 13 - NOOP
-					gene = op3
-				else :
-					#gene = ((op * (-1)) + gpG.OP_INI)
-					gene = op3
-				#Fin de If
 
-				# operador ponderado
-				#u2 = _rand_u01()
-				u2 = xoroshiro128p_uniform_float32(cu_states, tid)
-				j = gpM2._searchsorted_left(cdf, u2)
-				gene = int(operadores[j])
+				# if (op3 == gpG.OP_IFG and useOpIF == 1) :   # Fue un IF
+				# 	# Fue un IF, obtenemos la condicion de manera aleatoria
+				# 	cond = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % 3) + 1
+				# 	cond = Truncate(cond, 0)
+				# 	if (cond == 1) : # IFMAYOR
+				# 		op3 = gpG.OP_IFG 
+				# 	elif (cond == 2) : # IFMENOR
+				# 		op3 = gpG.OP_IFL
+				# 	elif (cond == 3) : # IFIGUAL
+				# 		op3 = gpG.OP_IFE
+				# 	else :
+				# 		op3 = gpG.OP_NOOP # 13 - NOOP
+				# 	gene = op3
+				# else :
+				# 	#gene = ((op * (-1)) + gpG.OP_INI)
+				# 	gene = op3
+				# #Fin de If
+
+				gene = gen_rand_operator(cu_states, tid, operadores, cdf, useOpIF) 
+				if (gene == 0):
+					gene = 331
 
 			elif ((prob < (genVariableProb+genOperatorProb))) :
 				# Obtenemos la probabilidad de que sea una variable */
-				gene = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % (nvar)+1000) * (-1)
-				gene = Truncate(gene, 0)
+				# gene = ((xoroshiro128p_normal_float64(cu_states, tid)*1000) % (nvar)+1000) * (-1)
+				# gene = Truncate(gene, 0)
+
+				gene = gen_rand_variable(cu_states, tid, nvar)
+				if (gene == 0):
+					gene = 332				
+
 			elif ((prob < (genVariableProb+genOperatorProb+genConstantProb))) :
 				# Obtenemos la probabilidad de que sea una constante */
-				#gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000)  % maxRandomConstant+1)
-				gene = ((xoroshiro128p_normal_float32(cu_states, tid))*maxRandomConstant  % maxRandomConstant)
-				#gene = Truncate(gene, 5)
 
-				prob = xoroshiro128p_uniform_float32(cu_states, tid)
-				#  Probabilidad de que la constante sea positiva o negativa */
-				if (prob < 0.5) :
-					gene = gene * (-1)         
+				# #gene = ((xoroshiro128p_normal_float32(cu_states, tid)*1000)  % maxRandomConstant+1)
+				# gene = ((xoroshiro128p_normal_float32(cu_states, tid))*maxRandomConstant  % maxRandomConstant)
+				# #gene = Truncate(gene, 5)
+
+				# prob = xoroshiro128p_uniform_float32(cu_states, tid)
+				# #  Probabilidad de que la constante sea positiva o negativa */
+				# if (prob < 0.5) :
+				# 	gene = gene * (-1)     
+
+				gene = gen_rand_const_in_range(cu_states, tid, maxRandomConstant)
+
+				if (gene == 0):
+					gene = 333
+
 			else :
 				# Obtenemos la probabilidad de que sea un Operador NOOP */
 				gene = gpG.OP_NOOP 	# Obtenemos la probabilidad de que sea un Operador NOOP */
 
-			g_Population[tid * sizeMaxDepthIndividual + j] = int(gene)
+			g_Population[tid * sizeMaxDepthIndividual + j] = gene
 		#end if
 
 		prob2 = xoroshiro128p_uniform_float32(cu_states, tid)
@@ -1057,7 +1138,7 @@ def umadMutation(cu_states,  # states
 
 		if (prob2 <= deletionRate) :
 			# Cae en la probabilidad de ser eliminado (NOOP)
-			g_Population[tid * sizeMaxDepthIndividual + j] = int(gpG.OP_NOOP)
+			g_Population[tid * sizeMaxDepthIndividual + j] = gpG.OP_NOOP
 	# Fin de for
 	return
 

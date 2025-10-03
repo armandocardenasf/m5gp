@@ -209,7 +209,7 @@ def ExecCuml(nProc, hFit,  st, mFitness, indiv, genes, nrows, hStackIdx, y_train
         cuModel= copy.deepcopy(slr)
 
         if check_npzeros(yPred):
-            if (scorer==0):
+            if (scorer==0) :
                 mse = gpG.MAX_RMSE
             else :
                 mse = gpG.MAX_R2_NEG

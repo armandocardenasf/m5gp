@@ -162,11 +162,12 @@ class m5gpRegressor(BaseEstimator):
     self.genOperatorProb=p_op_n 
     self.genVariableProb=p_var_n 
     self.genConstantProb=p_const_n 
-    self.genNoopProb=p_noop_n  
+    self.genNoopProb=p_noop_n
+    self.maxRandomConstant=np.float32(self.maxRandomConstant)   
 
-    # Set train data (x, y)
     self.X_train = X_train
     self.y_train = y_train
+
     # train data    
     data=pd.DataFrame(self.X_train)
     data['target']=self.y_train
@@ -178,6 +179,23 @@ class m5gpRegressor(BaseEstimator):
  
     print("Executing Fit - Method(", self.evaluationMethod ,") - ", gpCuM.cuGetMethodName(self), " Scorer:", self.scorer)
     print("nRows:", self.nrowTrain, "nVars:", self.nvar)
+
+    #pesos = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
+    #pesos = {op: 1/len(self.valid_functions_set) for op in self.valid_functions_set}
+
+    #Initialize operators weigth
+    pesos_por_id = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
+    op_weights = np.array([pesos_por_id[int(oid)] for oid in self.valid_functions_set], dtype=np.float32)
+      # Prepara la CDF una vez por generación (Numba)
+    cdf = gpM2.preparar_sampler_operadores_rapido_numba(
+        op_ids=self.valid_functions_set, op_weights=op_weights,
+        epsilon=0.02, temperatura=1.0
+    )
+    
+    # print("Pesos iniciales")
+    # print(pesos_por_id)
+    # print(op_weights)
+    # print(cdf)
 
     # Store the size in bytes for initial population
     gpG.sizePopulation = self.Individuals * self.GenesIndividuals 
@@ -199,7 +217,8 @@ class m5gpRegressor(BaseEstimator):
                               self.genConstantProb,
                               self.genNoopProb,
                               self.useOpIF,
-                              self.valid_functions_set )
+                              self.valid_functions_set,
+                              cdf )
     # -- End of Initialize population --
 
     # print("Individuals:")
@@ -216,7 +235,7 @@ class m5gpRegressor(BaseEstimator):
     #print ("Compute Individual")
     hOutIndividuals, hStack, hStackIdx, hStackModel = gpM1.compute_individuals(
             hInitialPopulation,
-            X_train,
+            self.X_train,
             self.Individuals,
             self.GenesIndividuals,
             self.nrowTrain,
@@ -245,7 +264,7 @@ class m5gpRegressor(BaseEstimator):
     # ***************************** Compute ERROR ***********************************
     hFit, indexBestOffspring, indexWorstOffspring, coefArr_p, intercepArr_p, cuModel_p = gpM1.ComputeError(self,
                 hOutIndividuals, 
-                y_train, 
+                self.y_train, 
                 self.Individuals, 
                 self.nrowTrain,
                 hStack, 
@@ -265,21 +284,6 @@ class m5gpRegressor(BaseEstimator):
     trainFit = hFit[indexBestIndividual_p] - ajFit    
     print("Initial Index:", indexBestIndividual_p, " Initial Fit:", trainFit)
 
-
-    #pesos = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
-    #pesos = {op: 1/len(self.valid_functions_set) for op in self.valid_functions_set}
-    pesos_por_id = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
-    op_weights = np.array([pesos_por_id[int(oid)] for oid in self.valid_functions_set], dtype=np.float32)
-      # Prepara la CDF una vez por generación (Numba)
-    cdf = gpM2.preparar_sampler_operadores_rapido_numba(
-        op_ids=self.valid_functions_set, op_weights=op_weights,
-        epsilon=0.02, temperatura=1.0
-    )
-    
-    # print("Pesos iniciales")
-    # print(pesos_por_id)
-    # print(op_weights)
-    # print(cdf)
 
     # ***********************************************************************
     # ********************* GP Process Generation Cycle *********************
@@ -314,7 +318,7 @@ class m5gpRegressor(BaseEstimator):
       # ***************************  Compute Individuals  ****************************
       hOutIndividuals, hStack, hStackIdx, hStackModel = gpM1.compute_individuals(
               hNewPopulation,
-              X_train,
+              self.X_train,
               self.Individuals,
               self.GenesIndividuals,
               self.nrowTrain,
@@ -324,7 +328,7 @@ class m5gpRegressor(BaseEstimator):
       # ***************************** Compute ERROR ***********************************
       hFitNew, indexBestOffspring, indexWorstOffspring, coefArrNew, intercepArrNew, cuModelNew = gpM1.ComputeError(self,
               hOutIndividuals, 
-              y_train, 
+              self.y_train, 
               self.Individuals, 
               self.nrowTrain,
               hStack, 
@@ -354,7 +358,7 @@ class m5gpRegressor(BaseEstimator):
       # print(pesos_por_id)
       # print(op_weights)
 
-      # Prepara la CDF una vez por generación (Numba)
+      # Prepara la CDF una vez por generación
       cdf = gpM2.preparar_sampler_operadores_rapido_numba(
           op_ids=self.valid_functions_set, op_weights=op_weights,
           epsilon=0.02, temperatura=1.0
@@ -387,7 +391,7 @@ class m5gpRegressor(BaseEstimator):
                       hFit,
                       hFitNew)
       # *********************** END NEW REPLACE ***********************
-      #print (hInitialPopulation)
+      # print (hInitialPopulation)
       
 
 			# Validate Best Individual with Test file for generation
@@ -415,17 +419,19 @@ class m5gpRegressor(BaseEstimator):
       gc.collect()
       
       
-      if hFitNew[indexBestIndividual_p] <= 0.00001 :
+      if hFitNew[indexBestIndividual_p] <= 0.00000000001 :
         break
-    
+
+    #end for 
     # ************* Fin de for (Ciclo Generacional) ****************
 
     # print(mBestIndividual)
-    print("Operadores validos:")
-    print(self.valid_functions_set)
-    #print(pesos_por_id)
-    print("Pesos:")
-    print(op_weights)
+    # print("Operadores validos:")
+    # print(self.valid_functions_set)
+    # print("Pesos por id:")
+    # print(pesos_por_id)
+    # print("Pesos:")
+    # print(op_weights)
 
     # Obtenemos el mejor individuo
     idx_a1 = indexBestIndividual_p * self.GenesIndividuals
@@ -506,6 +512,10 @@ class m5gpRegressor(BaseEstimator):
         if(math.isnan(tmp3) or math.isinf(tmp3)) :
           tmp3 = 0
 
+        #print(tmp1)
+        #print(tmp2)
+        #print(tmp3)
+
         # Solo interesan expresiones cuyo coeficiente no sea cero
         if (tmp3 != 0) :
           #Se agrega el coeficiente al inicio de la expresion
@@ -554,10 +564,13 @@ class m5gpRegressor(BaseEstimator):
     
     print("Inicio predict: ", X_predict.shape)
 
-    # Get number of data rows for predict
-    self.nrowPredict = X_predict.shape[0]
-    hDataPredict = np.reshape(X_predict, -1)
+    self.X_predict = X_predict
 
+    # Get number of data rows for predict
+    self.nrowPredict = self.X_predict.shape[0]
+    hDataPredict = np.reshape(self.X_predict, -1)
+
+    
     numIndividuals = 1
     hModelPopulation = self.bestIndividual  
     GenesIndiv = hModelPopulation.shape[0] # self.GenesIndividuals
@@ -576,7 +589,7 @@ class m5gpRegressor(BaseEstimator):
 
     stackBestModel_p = gpM1.getStackBestModel(
                 hModelPopulation,
-                X_predict,
+                self.X_predict,
                 numIndividuals,
                 GenesIndiv,
                 self.nrowPredict,
@@ -621,6 +634,23 @@ class m5gpRegressor(BaseEstimator):
     return y_pred
   # Fin de def (predict)
 
+  # def getModelExpr(self, model):
+  #   allModelExpr = gpG.getStackModelExpr(self, model) 
+
+  #   print(allModelExpr)
+  #   tmpModelExpr = allModelExpr[0]
+  #   tmp = tmpModelExpr.split(':')
+  #   nStack = int(tmp[1])
+
+  #   BestModelExpr = allModelExpr[nStack-1]
+  #   tmp = BestModelExpr.split(':')
+  #   indivLenght = tmp[0]
+  #   nStack = tmp[1]
+  #   complexity = tmp[2] 
+  #   modelExpr = tmp[3]
+
+  #   return modelExpr
+  
   def best_individual(self):
     if ((self.model == 0).all()) :
       print("No model available")

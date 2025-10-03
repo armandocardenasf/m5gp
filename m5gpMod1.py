@@ -31,7 +31,8 @@ def initialize_population (
         genConstantProb,
         genNoopProb,
         useOpIF,
-        hOperators ) :
+        hOperators,
+        h_cdf ) :
     
     
     MaxOcup = gpCuda.gpuMaxUseProc(numIndividuals)
@@ -58,6 +59,7 @@ def initialize_population (
     hInitialPopulation = np.zeros((gpG.sizePopulation), dtype=np.float32) 
     dInitialPopulation = cuda.to_device(hInitialPopulation)
     dOperators = cuda.to_device(hOperators)
+    d_cdf = cuda.to_device(h_cdf)
 
     start_time = time.time()
     
@@ -77,7 +79,8 @@ def initialize_population (
                                         genConstantProb,
                                         genNoopProb,
                                         useOpIF, 
-                                        dOperators ) 
+                                        dOperators,
+                                        d_cdf ) 
     elapsed = time.time() - start_time
 
     #cuda.synchronize()
@@ -662,7 +665,7 @@ def getStackBestModel(
   hStackModel = []
   hStack = np.zeros((memStack), dtype=np.float32)
   hStackIdx = np.zeros((memStackIdx), dtype=np.float32)
-  hStackModel = np.zeros((sizeModel), dtype=np.int32)
+  hStackModel = np.zeros((sizeModel), dtype=np.float32)
   hOutIndividuals = np.zeros((sizeIndividuals), dtype=np.float32) 
   hArrayTmp = np.zeros((numIndividuals), dtype=np.float32) 
 
