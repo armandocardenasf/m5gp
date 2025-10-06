@@ -61,10 +61,11 @@ if (scaled):
 #Operadores = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
 functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
 #functions_set = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs"]
+functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
 
 print('Running m5gp ...')  
  
-est = m5gp( generations=40, # number of generations (limited by default)
+est = m5gp( generations=50, # number of generations (limited by default)
             Individuals=512, # number of individuals
             GenesIndividuals=64, # number of genes per individual
             mutationProb=0.1, # mutation rate probability

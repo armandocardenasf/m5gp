@@ -83,21 +83,28 @@ def contiene_operador(arr, val):
 
 @cuda.jit
 def gen_rand_const_in_range(cu_states, tid, maxRandomConstant: float) -> float:
-	# Asegura rango simétrico aún si R < 0
-	r = abs(maxRandomConstant)
 
-	# u = xoroshiro128p_uniform_float32(cu_states, tid)
-	# c = (2.0 * u - 1.0) * r
-	# if (c == 0):
-	# 	c = 333
+	# Definimos el tipo de constante
+	cond = ((xoroshiro128p_normal_float32(cu_states, tid)*1000) % 3) + 1
+	cond = Truncate(cond, 0)
 
-	c = ((xoroshiro128p_normal_float32(cu_states, tid)) * r  % r)	
-	
-	# #  Probabilidad de que la constante sea positiva o negativa */
-	prob = xoroshiro128p_uniform_float32(cu_states, tid)
-	if (prob < 0.5) :
-		c = c * (-1)  
-	return c
+	if (cond == 1) : # Numero PI
+		cons = math.pi
+	elif (cond == 2) : # numero e
+		cons = math.e
+	else : # Constante aleatoria
+		# Asegura rango simétrico aún si R < 0
+		r = abs(maxRandomConstant)
+		c = ((xoroshiro128p_normal_float32(cu_states, tid)) * r  % r)	
+		
+		# #  Probabilidad de que la constante sea positiva o negativa */
+		prob = xoroshiro128p_uniform_float32(cu_states, tid)
+		if (prob < 0.5) :
+			c = c * (-1)  
+		cons = c
+	#end if
+
+	return cons
 
 @cuda.jit
 def gen_rand_variable(cu_states, tid, nvar: float) -> float:
