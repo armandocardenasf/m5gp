@@ -359,13 +359,14 @@ def ComputeError(self,
         hFit = dFit.copy_to_host()
         # This section makes use of the isamin of cublas function to determine
         # the position of the best individual in initial Population using RMSE
-        result_off = gpG.np.argmin(dFit)        
+        result_off = gpG.np.argmin(hFit)        
         indexBestOffspring = result_off
 
-        result_w = gpG.np.argmax(dFit)	
+        result_w = gpG.np.argmax(hFit)	
         indexWorstOffspring = result_w       
 
-    elif evaluationMethod == 1 :  #0=R2 :
+        
+    elif evaluationMethod == 1 :  #1=R2 :
         gpCuda.computeR2[blocksize, gridsize](
                         dOutIndividuals, 
                         dDataY, 
@@ -378,10 +379,10 @@ def ComputeError(self,
         # This section makes use of the isamax of cublas function to determine
         # the position of the best individual in initial Population using R2
         # #make a handle to the function of tf.cublas 
-        result_off = gpG.np.argmax(dFit)        
+        result_off = gpG.np.argmax(hFit)        
         indexBestOffspring = result_off
 
-        result_w = gpG.np.argmin(dFit)	
+        result_w = gpG.np.argmin(hFit)	
         indexWorstOffspring = result_w      
 
     elif (evaluationMethod == 2 or #M4GP - 2=cuML LinearRegression
@@ -404,18 +405,18 @@ def ComputeError(self,
         #elapsed = time.strftime("%H:%M:%S", time.gmtime(time.time() - start_time))
         #print(f"Time cuML lapsed: {elapsed}")
   
-        dFit = cuda.to_device(hFit)
+        #dFit = cuda.to_device(hFit)
         if (self.scorer==0) or (self.scorer==1):
-          result_off = gpG.np.argmin(dFit)        
+          result_off = gpG.np.argmin(hFit)        
           indexBestOffspring = result_off
 
-          result_w = gpG.np.argmax(dFit)	
+          result_w = gpG.np.argmax(hFit)	
           indexWorstOffspring = result_w   
         elif  (self.scorer==2) :
-          result_off = gpG.np.argmax(dFit)        
+          result_off = gpG.np.argmax(hFit)        
           indexBestOffspring = result_off
 
-          result_w = gpG.np.argmin(dFit)	
+          result_w = gpG.np.argmin(hFit)	
           indexWorstOffspring = result_w       
 
         # Obtenemos los coeficientes y el modelo del 
@@ -429,7 +430,7 @@ def ComputeError(self,
     elapsed = time.time() - start_time
     Ops = (numIndividuals * nrowTrain)
     #print("compute_error", elapsed, Ops)
-    gpG.WriteCSV_OpS("compute_error", elapsed,Ops)    
+    #gpG.WriteCSV_OpS("compute_error", elapsed,Ops)    
  
     return hFit, indexBestOffspring,  indexWorstOffspring, coefArr_p, intercepArr_p, cuModel_p
 # *************************  End of Evaluate Individuals  **************************

@@ -65,13 +65,13 @@ functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", 
 
 print('Running m5gp ...')  
  
-est = m5gp( generations=50, # number of generations (limited by default)
-            Individuals=512, # number of individuals
-            GenesIndividuals=64, # number of genes per individual
-            mutationProb=0.1, # mutation rate probability
-            mutationDeleteRateProb=0.05,  # mutation delete rate probality
-            sizeTournament=0.15, # size of tournament
-            evaluationMethod=2,  #error evaluation method 
+est = m5gp( generations=50, # number of generations (limited by default) (40)
+            Individuals=512, # number of individuals (512)
+            GenesIndividuals=64, # number of genes per individual (64)
+            mutationProb=0.1, # mutation rate probability (0.1)
+            mutationDeleteRateProb=0.05,  # mutation delete rate probality (0.05)
+            sizeTournament=0.15, # size of tournament (0.15)
+            evaluationMethod=2,  #error evaluation method (2)
                         # 0=RMSE, 
                         # 1=R2, 
                         #cuML Methods
@@ -83,16 +83,16 @@ est = m5gp( generations=50, # number of generations (limited by default)
                         # 8=MiniBatch lasso regularization 
                         # 9=MiniBatch ridge regularization 
                         #10=MiniBatch elasticnet regularization 
-            scorer=0, #Compute Error using: 0/1 => RMSE, 2 => R2
-            maxRandomConstant=1, #number of constants (-maxRandomConstant to maxRandomConstant)
-            genOperatorProb=0.45, #probablity for generate Operators 
-            genVariableProb=0.40, #probablity for generate variables 
-            genConstantProb=0.05, #probablity for generate constants
-            genNoopProb=0.1, #probablity for generate NOOP Operators 
-			useOpIF=0, #Set if use IF operator
+            scorer=0, #Compute Error using: 0/1 => RMSE, 2 => R2 (0)
+            maxRandomConstant=1, #number of constants (-maxRandomConstant to maxRandomConstant) (1)
+            genOperatorProb=0.45, #probablity for generate Operators (0.45)
+            genVariableProb=0.40, #probablity for generate variables (0.40)
+            genConstantProb=0.05, #probablity for generate constants (0.05)
+            genNoopProb=0.1, #probablity for generate NOOP Operators (0.1)
+			useOpIF=0, #Set if use IF operator (0)
             functions_set = functions_set, # Set of operators for include into individuals 
-            log=1, #save log files
-			verbose=1, #Show menssages on execution
+            log=1, #save log files (1)
+			verbose=1, #Show menssages on execution (1)
             logPath='log/' #path for logs
  )
 
