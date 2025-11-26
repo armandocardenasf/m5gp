@@ -14,6 +14,7 @@ import numpy as np
 import atexit
 
 from numba import cuda
+import torch
 import ctypes
 
 
@@ -100,6 +101,9 @@ OPERADORES_MASTER = {
     "if": OP_IF # Conditional operator
 }
 
+# Crear diccionario inverso ID → símbolo
+OPERADOR_POR_ID = {v: k for k, v in OPERADORES_MASTER.items()}
+
 PI = 3.14159265
 
 MAX_R2_NEG  = -5000
@@ -109,13 +113,13 @@ MAX_CONSTANT = 999
 MIN_CONSTANT = MAX_CONSTANT * (-1)
 
 
-global device_id
-global gpu_memory
-global free_mem 
+device_id = 0
+gpu_memory = 0
+free_mem = 0
 
-global sizePopulation
-global sizeIndividuals 
-global sizeTournament
+sizePopulation = 0
+sizeIndividuals = 0
+sizeTournament = 0
 
 def get_gpu_memory_info():
     free = ctypes.c_size_t()
@@ -123,39 +127,56 @@ def get_gpu_memory_info():
     cuda.cuMemGetInfo(ctypes.byref(free), ctypes.byref(total))
     return free.value, total.value
 
-def pycudasetup(gpu_device_number=0):
-    try:
-        pycuda.init()
-    except pycuda.LogicError:
-        raise RuntimeError("Cannot initialize GPU device")
+def cudaSetup(gpu_device_number=0): 
+    global device_id, gpu_memory, free_mem
+
+    # Check if CUDA and Device GPU are available
+    if torch.cuda.is_available():
+        # Get the device name
+        device = torch.cuda.get_device_name(gpu_device_number)
+        device_id = device
+        print(f"Using CUDA device: {device}")
+
+        print("Initial memory info:")
+        # Get total GPU memory
+        total_memory = torch.cuda.get_device_properties(gpu_device_number).total_memory
+        gpu_memory = total_memory
+        print(f"Total GPU memory: {total_memory / (1024**3):.2f} GB")  # Convert to GB
         
-    #device_id = int(device_id) if device_id is not None else 0
-    device = pycuda.Device(gpu_device_number)
+        # Get current memory allocation
+        allocated_memory = torch.cuda.memory_allocated(gpu_device_number)
+        print(f"Allocated GPU memory: {allocated_memory / (1024**3):.2f} GB")
 
-    # check compute capability
-    compute_capability = device.compute_capability()
-    if compute_capability[0] < 3:
-        raise RuntimeError("Unsupported GPU")
+        # Get cached memory
+        cached_memory = torch.cuda.memory_reserved(gpu_device_number)
+        print(f"Cached GPU memory: {cached_memory / (1024**3):.2f} GB")
 
-     # context  
-    global context
-    context = device.make_context()
-    attrs=device.get_attributes()
-  
-    print("Device #0: %s" % ( device.name()))
-    print(" Compute Capability: %d.%d" % device.compute_capability())
-    print(" Total Memory: %s GB" % (device.total_memory()//(1024*1024*1024)))
-    print("Succesfully initialized PYCUDA")
-    return
+        # Free up unused cached memory
+        torch.cuda.empty_cache()
+        print("Unused cached memory freed")
+
+        # Get allocated memory after clearing cache
+        allocated_memory_after = torch.cuda.memory_allocated(gpu_device_number)
+        print(f"Allocated GPU memory after clearing cache: {allocated_memory_after / (1024**3):.2f} GB")
+
+        free_mem = total_memory - allocated_memory_after
+        print(f"Free GPU memory : { free_mem / (1024**3):.2f} GB")
+
+        print("Succesfully initialized CUDA")
+        return True
+    else:
+      print("CUDA is not available.")
+      return False
+
 
 # Function for garbage collection in CUDA
-def pycuda_finish():
-    global context
-    context.pop()
-    from pycuda.tools import clear_context_caches
-    clear_context_caches()
-    print("Finishing up PYCUDA")
-    return
+# def cuda_finish():
+#     global context
+#     context.pop()
+#     from pycuda.tools import clear_context_caches
+#     clear_context_caches()
+#     print("Finishing up PYCUDA")
+#     return
 
 def WriteCSV_OpS(nFun, elapsed,Ops, fCreate=False) :
     return

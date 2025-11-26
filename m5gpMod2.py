@@ -168,7 +168,7 @@ def actualizar_pesos_operadores(
         fit_curr,          # fitness de la generación actual
         operator_ids,      # set con todos los ids válidos de operadores
         lower_is_better=True, # True si menor es mejor (ej. RMSE)
-        alpha_up=0.30,      # factor de incremento cuando mejora (0.2)
+        alpha_up=0.35,      # factor de incremento cuando mejora (0.2)
         beta_down=0.25,    # factor de decremento cuando no mejora (0.15)
         min_peso=1e-6      # piso para no anular operadores
     ):
@@ -178,14 +178,12 @@ def actualizar_pesos_operadores(
     # Inicializar pesos uniformes si están vacíos
     if not pesos_actuales:
         pesos_actuales = {oid: 1.0 / len(operator_ids) for oid in operator_ids}
-        # print("Inicializa pesos")
     
     # Totaliza la cantidad de usos por cada uno de los operadores en el mejor individuo
     usos = Counter([op for op in mejor_individuo if op in operator_ids])
 
     # Obtiene la suma de todos los usos de todos los operadores
     total_usos = sum(usos.values()) 
-
 
     #Se normaliza la frecuencia de uso
     frec = {op: usos[op]/total_usos if total_usos > 0 else 0.0 for op in operator_ids}
@@ -223,6 +221,25 @@ def actualizar_pesos_operadores(
 
     return nuevos_pesos
 
+def print_pesos_ordenados(pesos_por_id, valid_functions_set, operador_por_id):
+    # Crear vector de pesos en el mismo orden de valid_functions_set
+    pesos = [(oid, pesos_por_id[int(oid)]) for oid in valid_functions_set]
+
+    # Ordenar por peso descendente
+    pesos_ordenados = sorted(pesos, key=lambda x: x[1], reverse=True)
+
+    total = sum(w for _, w in pesos_ordenados) or 1.0
+
+    # print("\nPesos de operadores (ordenados):")
+    # for oid, w in pesos_ordenados:
+    #     pct = (w / total) * 100.0
+    #     print(f"Operador ID {oid}: peso={w:.4f}  ({pct:.2f}%)")
+
+    print("\nPesos de operadores (ordenados):")
+    for oid, w in pesos_ordenados:
+        simbolo = operador_por_id.get(oid, f"id={oid}")   # nombre legible
+        pct = (w / total) * 100.0
+        print(f"{simbolo:>5}  (ID {oid:2d})  peso={w:.4f}  ({pct:.2f}%)")
 
 # # ---------- Ejemplo rápido ----------
 # if __name__ == "__main__":

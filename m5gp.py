@@ -88,43 +88,8 @@ class m5gpRegressor(BaseEstimator):
     print("Initializing m5gp")
 
     # Check if CUDA and Device GPU are available
-    if torch.cuda.is_available():
-      # Get the device name
-      device = torch.cuda.get_device_name(0)
-      print(f"Using CUDA device: {device}")
-
-      print("Initial memory info:")
-      # Get total GPU memory
-      total_memory = torch.cuda.get_device_properties(0).total_memory
-      gpG.gpu_memory = total_memory
-      print(f"Total GPU memory: {total_memory / (1024**3):.2f} GB")  # Convert to GB
-      
-      # Get current memory allocation
-      allocated_memory = torch.cuda.memory_allocated(0)
-      print(f"Allocated GPU memory: {allocated_memory / (1024**3):.2f} GB")
-
-      # Get cached memory
-      cached_memory = torch.cuda.memory_reserved(0)
-      print(f"Cached GPU memory: {cached_memory / (1024**3):.2f} GB")
-
-      # Free up unused cached memory
-      torch.cuda.empty_cache()
-      print("Unused cached memory freed")
-
-      # Get allocated memory after clearing cache
-      allocated_memory_after = torch.cuda.memory_allocated(0)
-      print(f"Allocated GPU memory after clearing cache: {allocated_memory_after / (1024**3):.2f} GB")
-
-      gpG.free_mem = total_memory - allocated_memory_after
-      print(f"Free GPU memory : { gpG.free_mem / (1024**3):.2f} GB")
-
-      # Pool de memoria (ajusta tamaño al GPU)
-      # allocMem =  int((gpG.gpu_memory / (1024**3)) - 1)
-      # rmm.reinitialize(pool_allocator=True, initial_pool_size=allocMem<<30)  # 5 GB
-      # cp.cuda.set_allocator(rmm_cupy_allocator)
-
-    else:
-      print("CUDA is not available.")
+    if not gpG.cudaSetup(0):
+      print("Check CUDA device. Fail to initialize.")
       return
 
     # Verifica los operadores validos y construye el diccionario a utilizar
@@ -132,17 +97,13 @@ class m5gpRegressor(BaseEstimator):
     if (len(self.functions_set) == 0):
       print("No se definieron operadores")
       exit(0)
-
-    print("MaxRandomConstant: ", self.maxRandomConstant)
     
     # Get valid functions (mathematical operators) allowed for generate individuals
     self.valid_functions_set = gpG.construir_lista_operadores_validos(self.functions_set)
     if (len(self.valid_functions_set) == 0):
       print("No se especificaron operadores validos")
       exit(0)
-    
-    # print("valid_functions_set")
-    # print(self.valid_functions_set)
+  
 
     fName = "M5GP_OpS.csv"
     if os.path.exists(fName):
@@ -182,14 +143,13 @@ class m5gpRegressor(BaseEstimator):
     print("Executing Fit - Method(", self.evaluationMethod ,") - ", gpCuM.cuGetMethodName(self), " Scorer:", self.scorer)
     print("nRows:", self.nrowTrain, "nVars:", self.nvar)
 
-    #pesos = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
-    #pesos = {op: 1/len(self.valid_functions_set) for op in self.valid_functions_set}
-
     #Initialize operators weigth
     pesos_por_id = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
     op_weights = np.array([pesos_por_id[int(oid)] for oid in self.valid_functions_set], dtype=np.float32)
       
-    # Prepara la CDF una vez por generación (Numba)
+    # Prepara la CDF (Cumulative Distribution Function) una vez por generación (Numba)
+    # CDF => lista de probabilidades acumuladas que se usa para hacer selección aleatoria ponderada.
+    # Esto te permite hacer selección basada en probabilidad directamente.
     cdf = gpM2.preparar_operadores_numba(
         op_ids=self.valid_functions_set, op_weights=op_weights,
         epsilon=0.02, temperatura=1.0
@@ -356,10 +316,11 @@ class m5gpRegressor(BaseEstimator):
 
       # print(mBestIndividual)
       # print(self.valid_functions_set)
-      # print(pesos_por_id)
-      # print(op_weights)
+      #print(pesos_por_id)
+      #print(op_weights)
+      #gpM2.print_pesos_ordenados(pesos_por_id, self.valid_functions_set, gpG.OPERADOR_POR_ID)
 
-      # Prepara la CDF una vez por generación
+      # Prepara la CDF (Cumulative Distribution Function) una vez por generación
       cdf = gpM2.preparar_operadores_numba(
           op_ids=self.valid_functions_set, op_weights=op_weights,
           epsilon=0.02, temperatura=1.0
