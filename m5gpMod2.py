@@ -55,7 +55,7 @@ def _build_cdf(w: np.ndarray) -> np.ndarray:
     return cdf
 
 @njit
-def preparar_sampler_operadores_rapido_numba(
+def preparar_operadores_numba(
         op_ids: np.ndarray,          # int64, IDs de operadores (ya filtrados y ORDENADOS)
         op_weights: np.ndarray,      # float64, pesos en el mismo orden que op_ids (no normalizados)
         epsilon: float = 0.02,
@@ -79,7 +79,7 @@ def preparar_sampler_operadores_rapido_numba(
 
 @njit
 def _rand_u01() -> float:
-    # RNG de Numba: usa np.random.random() (reproducible si seteas np.random.seed antes)
+    # RNG de Numba: usa np.random.random() 
     return float(np.random.random())
 
 @njit
@@ -109,6 +109,13 @@ def _pick_uniform_id(ids: np.ndarray) -> int:
         j = n - 1
     return int(ids[j])
 
+"""
+Genera un nuevo gen aleatorio:
+    - Si cae en 'operador', muestrea ponderado usando (op_ids, cdf).
+    - Si cae en 'variable' o 'constante', elige uniforme de var_ids/const_ids.
+    - De lo contrario, regresa OP_NOOP.
+Sin restricciones de aridad.
+"""
 @njit
 def nuevo_gen_rapido_numba(
     op_ids: np.ndarray, cdf: np.ndarray,
@@ -116,13 +123,6 @@ def nuevo_gen_rapido_numba(
     p_op: float = 0.50, p_var: float = 0.39, p_const: float = 0.10, p_noop: float = 0.01,
     OP_NOOP: int = -10099
 ) -> int:
-    """
-    Genera un nuevo gen aleatorio:
-      - Si cae en 'operador', muestrea ponderado usando (op_ids, cdf).
-      - Si cae en 'variable' o 'constante', elige uniforme de var_ids/const_ids.
-      - De lo contrario, regresa OP_NOOP.
-    Sin restricciones de aridad.
-    """
     # Normalizar clases por seguridad
     total = p_op + p_var + p_const + p_noop
     if total <= 0.0:
@@ -168,8 +168,8 @@ def actualizar_pesos_operadores(
         fit_curr,          # fitness de la generación actual
         operator_ids,      # set con todos los ids válidos de operadores
         lower_is_better=True, # True si menor es mejor (ej. RMSE)
-        alpha_up=0.3,      # factor de incremento cuando mejora (0.2)
-        beta_down=0.1,    # factor de decremento cuando no mejora (0.15)
+        alpha_up=0.30,      # factor de incremento cuando mejora (0.2)
+        beta_down=0.25,    # factor de decremento cuando no mejora (0.15)
         min_peso=1e-6      # piso para no anular operadores
     ):
     """
@@ -186,9 +186,6 @@ def actualizar_pesos_operadores(
     # Obtiene la suma de todos los usos de todos los operadores
     total_usos = sum(usos.values()) 
 
-    # print("Usos:")
-    # print (usos)
-    # print (mejor_individuo)
 
     #Se normaliza la frecuencia de uso
     frec = {op: usos[op]/total_usos if total_usos > 0 else 0.0 for op in operator_ids}

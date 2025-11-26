@@ -93,25 +93,25 @@ def createCumlMethod(mFitness) :
     rPenalty = 'none'
     if mFitness == 2 :
         slr = LinearRegression(fit_intercept = True, 
-                               copy_X = True,
+                               copy_X = False,
                                normalize = False, 
                                algorithm = "svd" # algorithm{‘svd’, ‘eig’, ‘qr’, ‘svd-qr’, ‘svd-jacobi’}, (default = ‘eig’)
                                ) 
 
     if mFitness == 3 :
         slr = Lasso(alpha = 1.0, # (default = 1.0)
-                    normalize = True, # (default = False)
+                    normalize = False, # (default = False)
                     fit_intercept=True, # (default = True)
-                    max_iter = 1000, #  (default = 1000)
+                    max_iter = 50, #  (default = 1000)
                     solver =  'cd', # {‘cd’, ‘qn’} (default=’cd’)
                     selection = 'cyclic' # {‘cyclic’, ‘random’} (default=’cyclic’)
                     )
 
     if mFitness == 4 :
-        slr = Ridge(alpha=1.0, # (default = 1.0)
+        slr = Ridge(alpha=0.5, # (default = 1.0)
                     fit_intercept=True, # (default = True)
                     normalize=False, # (default = False)
-                    solver="svd", #solver {‘eig’, ‘svd’, ‘cd’} (default = ‘eig’)
+                    solver="auto", #solver {‘eig’, ‘svd’, ‘cd’, 'auto'} (default = ‘eig’)
                     verbose=6)
 
     if mFitness == 5 :
@@ -119,18 +119,18 @@ def createCumlMethod(mFitness) :
 
     if mFitness == 6 :
         #net = ElasticNet(alpha=1e-3, l1_ratio=0.1, max_iter=1000, tol=1e-3, output_type="cupy")
-        slr = ElasticNet(alpha = 1e-3,  # (default = 1.0)
-                         l1_ratio=0.1,  # (default = 0.5)
+        slr = ElasticNet(alpha = 0.2,  # (default = 1.0)
+                         l1_ratio=0.3,  # (default = 0.5)
                          solver='cd', # {‘cd’, ‘qn’} (default=’cd’)
                          normalize=False, #  (default = False)
-                         max_iter = 1000, #  (default = 1000)
+                         max_iter = 80, #  (default = 1000)
                          tol=0.001, # (default = 1e-3)
                          fit_intercept=True, # (default = True)
                          selection= 'cyclic' # {‘cyclic’, ‘random’} (default=’cyclic’)
                          )
 
     if mFitness == 7 :
-        rPenalty = 'none' # normal - Linear regression
+        rPenalty = None # normal - Linear regression
 
     if mFitness == 8 :
         rPenalty = 'l1'  # Lasso
@@ -145,10 +145,10 @@ def createCumlMethod(mFitness) :
         slr = cumlMBSGDRegressor(alpha=0.0001, # default = 0.0001)
                                 learning_rate='adaptive', #learning_rate : {‘optimal’, ‘constant’, ‘invscaling’, ‘adaptive’} (default = ‘constant’)
                                 eta0=0.001, # (default = 0.001)
-                                epochs=1000, # (default = 1000)
+                                epochs=20, # (default = 1000)
                                 fit_intercept=True, # (default = True)
                                 l1_ratio = 0.15, # (default=0.15)
-                                batch_size=1024, # (default = 32)
+                                batch_size=32, # (default = 32)
                                 tol=0.001, # (default = 1e-3)
                                 penalty=rPenalty, # {‘none’, ‘l1’, ‘l2’, ‘elasticnet’} (default = ‘l2’)
                                 loss='squared_loss', # {‘hinge’, ‘log’, ‘squared_loss’} (default = ‘hinge’)
@@ -165,8 +165,7 @@ def ExecCuml(nProc, hFit,  st, mFitness, indiv, genes, nrows, hStackIdx, y_train
     if (nProc > indiv):
         return
     
-
-   ## slr = createCumlMethod(mFitness)
+    ## slr = createCumlMethod(mFitness)
     #slr = copy.deepcopy(slr1)
 
     ind = st[nProc]
@@ -184,42 +183,50 @@ def ExecCuml(nProc, hFit,  st, mFitness, indiv, genes, nrows, hStackIdx, y_train
     cX = cudf.DataFrame()
     cY = cudf.DataFrame()
 
+
     # Verificamos que al menos tengamos una columna en el arreglo
     if (sCols >= 1) :
         cX = cp.asarray(sX_train, dtype=cp.float32)
         cY = cp.asarray(y_train, dtype=cp.float32)
+        try:
+            # Procesamos el Fit con el arreglo transformado
+            reg = slr.fit(cX, cY)
+    
+            # Creamos un vector de coeficientes
+            coefArr = reg.coef_
+            
+            #creamos un vector de valores de interceps
+            if(math.isnan(reg.intercept_) or math.isinf(reg.intercept_)) :
+                intercepArr = 0
+            else :
+                intercepArr = reg.intercept_
 
-        # Procesamos el Fit con el arreglo transformado
-        #print("Ejecuta fit")
-        #print(cX, cY)
-        reg = slr.fit(cX, cY)
-   
-        # Creamos un vector de coeficientes
-        coefArr = reg.coef_
-        
-        #creamos un vector de valores de interceps
-        if(math.isnan(reg.intercept_) or math.isinf(reg.intercept_)) :
-            intercepArr = 0
-        else :
-            intercepArr = reg.intercept_
+            yPred = slr.predict(cX)
 
-        #print("Ejecuta predict")
-        yPred = slr.predict(cX)
+            cuModel= copy.deepcopy(slr)
 
-        cuModel= copy.deepcopy(slr)
-
-        if check_npzeros(yPred):
-            if (scorer==0) :
+            if check_npzeros(yPred):
+                if (scorer==0) :
+                    mse = gpG.MAX_RMSE
+                else :
+                    mse = gpG.MAX_R2_NEG
+            else :
+                if (scorer==0) or (scorer==1):
+                    # Se hace la evaluacion utilizando MSE
+                    mse = cuMSE(cY, yPred, squared=True)
+                else :
+                    # Se hace la evaluacion utilizando R2
+                    mse = cuR2(cY, yPred)
+        except Exception as e:
+            # Se ejecuta si ocurre cualquier error
+            if (scorer==0) or (scorer==1):
                 mse = gpG.MAX_RMSE
             else :
                 mse = gpG.MAX_R2_NEG
-        else :
-            if (scorer==0) or (scorer==1):
-                # Se hace la evaluacion utilizando MSE
-                mse = cuMSE(cY, yPred, squared=True)
-            else :
-                # Se hace la evaluacion utilizando R2
-                mse = cuR2(cY, yPred)
+            coefArr = 0
+            intercepArr = 0
+            cuModel = copy.deepcopy(slr)
+        #end Try/Catch
     else :      
         if (scorer==0) or (scorer==1):
             mse = gpG.MAX_RMSE

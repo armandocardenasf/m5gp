@@ -46,7 +46,7 @@ class m5gpRegressor(BaseEstimator):
             sizeTournament=0.20,  
             evaluationMethod=0,        
             scorer=0,  
-            maxRandomConstant=5, 
+            maxRandomConstant=1, 
             genOperatorProb=0.54, 
             genVariableProb=0.35, 
             genConstantProb=0.10, 
@@ -132,6 +132,8 @@ class m5gpRegressor(BaseEstimator):
     if (len(self.functions_set) == 0):
       print("No se definieron operadores")
       exit(0)
+
+    print("MaxRandomConstant: ", self.maxRandomConstant)
     
     # Get valid functions (mathematical operators) allowed for generate individuals
     self.valid_functions_set = gpG.construir_lista_operadores_validos(self.functions_set)
@@ -163,7 +165,7 @@ class m5gpRegressor(BaseEstimator):
     self.genVariableProb=p_var_n 
     self.genConstantProb=p_const_n 
     self.genNoopProb=p_noop_n
-    self.maxRandomConstant=np.float32(self.maxRandomConstant)   
+    #self.maxRandomConstant= np.float32(self.maxRandomConstant)   
 
     self.X_train = X_train
     self.y_train = y_train
@@ -186,8 +188,9 @@ class m5gpRegressor(BaseEstimator):
     #Initialize operators weigth
     pesos_por_id = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
     op_weights = np.array([pesos_por_id[int(oid)] for oid in self.valid_functions_set], dtype=np.float32)
-      # Prepara la CDF una vez por generación (Numba)
-    cdf = gpM2.preparar_sampler_operadores_rapido_numba(
+      
+    # Prepara la CDF una vez por generación (Numba)
+    cdf = gpM2.preparar_operadores_numba(
         op_ids=self.valid_functions_set, op_weights=op_weights,
         epsilon=0.02, temperatura=1.0
     )
@@ -348,8 +351,6 @@ class m5gpRegressor(BaseEstimator):
       idx_b1 = indexBestOffspring * self.GenesIndividuals + self.GenesIndividuals
       mBestIndividual = hNewPopulation[idx_a1:idx_b1]
 
-      #pesos = gpG.actualizar_pesos_por_fitness(ops, pesos, best, fit_prev=0.48, fit_curr=0.52, lower_is_better=True)
-      #pesos = gpG.actualizar_pesos_por_fitness(self.valid_functions_set, pesos, mBestIndividual, fit_prev=0.48, fit_curr=0.52, lower_is_better=True)
       pesos_por_id = gpM2.actualizar_pesos_operadores(pesos_por_id, mBestIndividual, oldFit, newFit, self.valid_functions_set)
       op_weights = np.array([pesos_por_id[int(oid)] for oid in self.valid_functions_set], dtype=np.float32)
 
@@ -359,7 +360,7 @@ class m5gpRegressor(BaseEstimator):
       # print(op_weights)
 
       # Prepara la CDF una vez por generación
-      cdf = gpM2.preparar_sampler_operadores_rapido_numba(
+      cdf = gpM2.preparar_operadores_numba(
           op_ids=self.valid_functions_set, op_weights=op_weights,
           epsilon=0.02, temperatura=1.0
       )
@@ -419,7 +420,7 @@ class m5gpRegressor(BaseEstimator):
       gc.collect()
       
       
-      if hFitNew[indexBestIndividual_p] <= 0.00000000001 :
+      if hFitNew[indexBestIndividual_p] <= 0.0000000000000001 :
         break
 
     #end for 
@@ -449,7 +450,7 @@ class m5gpRegressor(BaseEstimator):
     # la matriz semantica 
     if (self.evaluationMethod >= 2 ) :
       self.cuModel = copy.deepcopy(cuModel_p)
-      self.maxRandomConstant = gpG.MAX_CONSTANT
+      #self.maxRandomConstant = gpG.MAX_CONSTANT
 
       #print("X_train:")
       #print(X_train)

@@ -419,6 +419,9 @@ def compute_individuals(inputPopulation: np.ndarray,
 					if (not math.isnan(tmp) and not math.isinf(tmp) and not math.isnan(tmp2) and not math.isinf(tmp2)) :
 						out = tmp / math.sqrt(1 + (tmp2 * tmp2))
 						#out = div_protegida_device(tmp,tmp2, 1e-12) # division protegida
+
+						if(math.isnan(out) or math.isinf(out)) :
+							out = gpG.MIN_RMSE	
 						uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
 						pushGenes += 1							
 						if (model == 1) :
@@ -435,99 +438,190 @@ def compute_individuals(inputPopulation: np.ndarray,
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				#tmp = pop(pushGenes,uStack[tidSem*sizeMaxDepthIndividual])
 				pushGenes -=  1
-				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
-				if (not math.isnan(tmp) and not math.isinf(tmp)) :
-					out = math.sin(tmp)
-					#out = sin(tmp * PI / 180.0) 
-					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
-					pushGenes += 1						
-					if (model == 1) :
-						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-						pushModel += 1		
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
+
+				# Limpiar entradas inválidas
+				if math.isnan(tmp) or math.isinf(tmp):
+					tmp = gpG.MIN_RMSE
+				
+				# Reducir valores extremadamente grandes (opcional pero recomendable)
+				# Evita overflow interno en otras funciones trigonométricas en GPU
+				eps = 1e6
+				if tmp > eps:
+					tmp = eps
+				elif tmp < -eps:
+					tmp = -eps
+				
+				# Calcular sin normalmente
+				out = math.sin(tmp)
+
+				# Limpiar posibles NaN por errores de hardware
+				if math.isnan(out) or math.isinf(out):
+					out = gpG.MIN_RMSE
+
+				if(math.isnan(out) or math.isinf(out)) :
+					out = gpG.MIN_RMSE	
+
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1						
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1	
+			# endif		
 			continue					
 		# *************************** Es un operador de coseno ******************************/
 		elif (inputPop == gpG.OP_COS) :   # Es coseno
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
-				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
-				if (not math.isnan(tmp) and not math.isinf(tmp)) :
-					out = math.cos(tmp)
-					#out = cos(tmp * PI / 180.0 ) 
-					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
-					pushGenes += 1						
-					if (model == 1) :
-						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-						pushModel += 1	
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
+
+				# Limpiar entradas inválidas
+				if math.isnan(tmp) or math.isinf(tmp):
+					tmp = gpG.MIN_RMSE
+				
+				# Reducir valores extremadamente grandes (opcional pero recomendable)
+				# Evita overflow interno en otras funciones trigonométricas en GPU
+				eps = 1e6
+				if tmp > eps:
+					tmp = eps
+				elif tmp < -eps:
+					tmp = -eps
+				
+				# Calcular cos normalmente
+				out = math.cos(tmp)
+				#out = cos(tmp * PI / 180.0 )
+
+				# Limpiar posibles NaN por errores de hardware
+				if math.isnan(out) or math.isinf(out):
+					out = gpG.MIN_RMSE
+
+				if(math.isnan(out) or math.isinf(out)) :
+					out = gpG.MIN_RMSE
+
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1						
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1	
+			# endif		
 			continue	
+
 		# *************************** Es un operador de tangente ******************************/
 		elif (inputPop == gpG.OP_TAN) :   # Es tangente
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
-				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
-				if (not math.isnan(tmp) and not math.isinf(tmp)) :
-					out = math.tan(tmp)
-					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
-					pushGenes += 1						
-					if (model == 1) :
-						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-						pushModel += 1	
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
+
+				if math.isnan(tmp) or math.isinf(tmp):
+					tmp = gpG.MIN_RMSE
+			
+				out = math.tan(tmp)
+			
+				# Si el resultado es NaN o Inf → reemplazar por 0
+				if math.isnan(out) or math.isinf(out):
+					out = gpG.MIN_RMSE
+
+				limit=10.0
+				# Clipping manual sin np.clip (Numba no soporta numpy)
+				if out > limit:
+					out = limit
+				elif out < -limit:
+					out = -limit
+
+
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1						
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1	
+
 			continue
 		# *************************** Es un operador de tangente hyperbolica ******************************/
 		elif (inputPop == gpG.OP_TANH) :   # Es tangente hyperbolica
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
-				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]				
-				if (not math.isnan(tmp) and not math.isinf(tmp)) :
-					out = math.tanh(tmp)
-					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
-					pushGenes += 1						
-					if (model == 1) :
-						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-						pushModel += 1	
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
+
+				if math.isnan(tmp) or math.isinf(tmp):
+					tmp = 0.0
+				
+				out = math.tanh(tmp)
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1						
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1	
+
 			continue
+		# *************************** Es un operador de raiz cuadrada ******************************/
+		elif (inputPop == gpG.OP_SQRT) :   # Es raiz cuadrada
+			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
+				pushGenes -=  1
+				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
+
+				if math.isnan(tmp) or math.isinf(tmp):
+					tmp = 1e308
+				
+				eps = 1e-8
+				out = math.sqrt(math.fabs(tmp) + eps)
+
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1						
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1	
+
+			continue
+
 		# *************************** Es un operador de exponente ******************************/
 		elif (inputPop == gpG.OP_EXP) :    # Es exponente
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
-				if (not math.isnan(tmp) and not math.isinf(tmp)) :
-					out = math.exp(tmp)
-					if (not math.isnan(out) and not math.isinf(out) ) :
-						uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
-						pushGenes += 1							
-						if (model == 1) :
-							stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-							pushModel += 1							
-					else :
-						uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-						pushGenes += 1		
+
+				# Evitar pasar NaN o inf
+				if math.isnan(tmp) or math.isinf(tmp):
+					tmp = 0.0
+
+				if tmp > 50.0:
+					tmp = 50.0
+				elif tmp < -50.0:
+					tmp = -50.0
+					
+				out = math.exp(tmp)
+
+				if (not math.isnan(out) and not math.isinf(out) ) :
+					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+					pushGenes += 1							
+					if (model == 1) :
+						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+						pushModel += 1							
+				else :
+					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
+					pushGenes += 1		
+						
 			continue					
 		# *************************** Es un operador de logaritmo ******************************/
 		elif (inputPop == gpG.OP_LOG) :    # Es logaritmo
 			if (not isEmpty(pushGenes,sizeMaxDepthIndividual)) :
 				pushGenes -=  1
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]	
-				if (not math.isnan(tmp) and not math.isinf(tmp)) :
-					if (tmp < 0):
-						tmp = math.fabs(tmp)
-					
-					# if (tmp == 0):
-					e = 0.000000001
-					out = math.log(tmp + e) 
 
-					# if (tmp > 0) :
-					# 	out = math.log(1 + tmp) 
-					# else :
-					# 	out = 333
-					
-					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
-					pushGenes += 1							
-					if (model == 1) :
-						stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
-						pushModel += 1							
-					#else :
-					#	uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = tmp
-					#	pushGenes += 1		
+				eps = 1e-9			
+				if tmp <= eps or math.isnan(tmp) or math.isinf(tmp):
+					tmp = eps
+				
+				out = math.log(tmp)
+
+				if(math.isnan(out) or math.isinf(out)) :
+					out = gpG.MIN_RMSE	
+
+				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
+				pushGenes += 1							
+				if (model == 1) :
+					stackModel[tidSem*sizeMaxDepthIndividual + pushModel]= inputPop
+					pushModel += 1						
+	
 			continue					
 		# *************************** Es un operador de absoluto ******************************/
 		elif (inputPop == gpG.OP_ABS) :    #  Es absoluto
@@ -536,6 +630,9 @@ def compute_individuals(inputPopulation: np.ndarray,
 				tmp = uStack[tidSem*sizeMaxDepthIndividual+pushGenes]		
 				if (not math.isnan(tmp) and not math.isinf(tmp)) :
 					out = math.fabs(tmp) 
+
+					if(math.isnan(out) or math.isinf(out)) :
+						out = gpG.MIN_RMSE	
 					uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
 					pushGenes += 1						
 					if (model == 1) :
@@ -569,6 +666,8 @@ def compute_individuals(inputPopulation: np.ndarray,
 					pushModel += 1	
 				#Fin del if
 
+				if(math.isnan(out) or math.isinf(out)) :
+					out = gpG.MIN_RMSE	
 				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
 				pushGenes += 1					
 			# Fin del if
@@ -598,6 +697,8 @@ def compute_individuals(inputPopulation: np.ndarray,
 					pushModel += 1	
 				#Fin del if
 
+				if(math.isnan(out) or math.isinf(out)) :
+					out = gpG.MIN_RMSE	
 				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
 				pushGenes += 1					
 			# Fin del if
@@ -631,6 +732,8 @@ def compute_individuals(inputPopulation: np.ndarray,
 					pushModel += 1	
 				#Fin del if
 
+				if(math.isnan(out) or math.isinf(out)) :
+					out = gpG.MIN_RMSE	
 				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
 				pushGenes += 1					
 			# Fin del if
@@ -695,6 +798,8 @@ def compute_individuals(inputPopulation: np.ndarray,
 					pushModel += 1	
 				#End if
 							
+				if(math.isnan(out) or math.isinf(out)) :
+					out = gpG.MIN_RMSE	
 				uStack[tidSem*sizeMaxDepthIndividual+pushGenes] = out
 				pushGenes += 1	
 			#End if

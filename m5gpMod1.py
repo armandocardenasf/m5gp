@@ -95,7 +95,8 @@ def initialize_population (
     gpG.WriteCSV_OpS("InitialPopulation", elapsed,Ops,True)
  
     return hInitialPopulation
-# -- End of Initialize population --
+# ******************** -- End of Initialize population -- ***********************
+
 
 # ***************************  Compute Individuals  ****************************
 def compute_individuals(
@@ -132,7 +133,7 @@ def compute_individuals(
   sizeStackIdx = sizeIndividuals  * nrowTrain
 
   # Calculate the available memory for slide individuals blocks 
-  memRequired = (np.dtype(float).itemsize) * (sizePopulation + 
+  memRequired = (np.dtype(np.float32).itemsize) * (sizePopulation + 
                           sizeIndividualsTrain + 
                           sizeDataTrain + 
                           sizeStack + 
@@ -143,19 +144,25 @@ def compute_individuals(
   memRest = gpG.free_mem-memRequired
   memUsePercent = memRequired/gpG.free_mem
   memUsePercent2 = memUsePercent - math.floor(memUsePercent)
-  #print("memUsePercent: ", memUsePercent, "memUsePercent2: ", memUsePercent2, )
+  # print("memRequired: ",memRequired, "memFree: ", gpG.free_mem)
+  # print("1. memUsePercent: ", memUsePercent, " memUsePercent2: ", memUsePercent2, )
 
   memUsePercent = math.ceil(memUsePercent)
+  # print("2. memUsePercent: ", memUsePercent, " memUsePercent2: ", memUsePercent2, )
+
   if (memUsePercent2 > 0.85):
     memUsePercent = memUsePercent + 1
   
   if (memUsePercent <= 1) :
     memUsePercent = 1
 
+  # print("3. memUsePercent: ", memUsePercent, " memUsePercent2: ", memUsePercent2, )
+
   # We obtain the number of blocks that are necessary to evaluate the population 
   # with respect to the data. The goal is to use no more than 85% of the available 
   # memory on the GPU device when processing each block.      
   numIndividualsBlock = math.ceil(numIndividuals / memUsePercent)
+
   initialBlock = 0
   finalBlock = numIndividualsBlock 
 
@@ -168,6 +175,7 @@ def compute_individuals(
 
   hOutIndividuals = [] 
   hOutIndividualsBlock = []
+  # print("sizeStack:", sizeStack)
   hStack = np.zeros((sizeStack), dtype=np.float32)
   hStackIdx = np.zeros((sizeStackIdx), dtype=np.float32)
   hStackModel = []
@@ -189,14 +197,14 @@ def compute_individuals(
   # If necessary, due to the amount of memory required, 
   # the population to be evaluated is divided into blocks 
   # so as not to saturate the memory..
-  while(finalBlock <= numIndividuals) :      
+  while(finalBlock <= numIndividuals) :  
     sizePopulationBlock = numIndividualsBlock * GenesIndividuals
     sizeIndividualsBlock = numIndividualsBlock * nrowTrain
     memStackBlock = sizePopulationBlock * nrowTrain
     memStackIdxBlock = sizeIndividualsBlock
     sizeModelBlock = numIndividualsBlock * GenesIndividuals * nrowTrain
     totalSemanticElementsBlock = numIndividualsBlock * nrowTrain
-    sizeIndividualsBlock = numIndividualsBlock * nrowTrain
+    #sizeIndividualsBlock = numIndividualsBlock * nrowTrain
 
     hStackBlock = np.zeros((memStackBlock), dtype=np.float32)
     hStackIdxBlock = np.zeros((memStackIdxBlock), dtype=np.float32)
@@ -207,10 +215,8 @@ def compute_individuals(
     # Get initial population block for evaluate individuals
     if (finalBlock ==  numIndividuals and pBlock1 == 0):
       hInitialPopulationBlock = hInitialPopulation
-      #print("Entro A")
     else:
       hInitialPopulationBlock = hInitialPopulation[(initialBlock*GenesIndividuals):(finalBlock*GenesIndividuals)]
-      #print("Entro B")
        
     dInitialPopulationBlock = cuda.to_device(hInitialPopulationBlock)
     dOutIndividualsBlock = cuda.to_device(hOutIndividualsBlock)   
@@ -223,7 +229,7 @@ def compute_individuals(
     blocksize = MaxOcup["BlockSize"]
     gridsize = MaxOcup["GridSize"]    
 
-    #elapsed2 = time.time() - start_time - elapsed1
+    elapsed2 = time.time() - start_time - elapsed1
     # print("compute_individuals 2 (" + str(pBlock1) + ")", elapsed2,Ops)
     #gpG.WriteCSV_OpS("compute_individuals 2 ", elapsed2,Ops)
     
@@ -241,13 +247,13 @@ def compute_individuals(
                         dStackModelBlock,
                         dArrayTmp
     )
-    #elapsed3 = time.time() - start_time - elapsed2 - elapsed1
+    elapsed3 = time.time() - start_time - elapsed2 - elapsed1
     # print("compute_individuals 3 (" + str(pBlock1) + ")", elapsed3,Ops)
     #gpG.WriteCSV_OpS("compute_individuals 3 ", elapsed3,Ops)
 
-    #cuda.synchronize()
+    cuda.synchronize()
     
-    #elapsed4 = time.time() - start_time - elapsed3 - elapsed2 - elapsed1
+    elapsed4 = time.time() - start_time - elapsed3 - elapsed2 - elapsed1
     #gpG.WriteCSV_OpS("compute_individuals 4 ", elapsed4,Ops)
 
     # Return blocks from Device to host
@@ -255,7 +261,7 @@ def compute_individuals(
     hStackBlock = dStackBlock.copy_to_host()
     hStackIdxBlock = dStackIdxBlock.copy_to_host()
 
-    #elapsed5 = time.time() - start_time - elapsed4 - elapsed3 - elapsed2 - elapsed1
+    elapsed5 = time.time() - start_time - elapsed4 - elapsed3 - elapsed2 - elapsed1
     # print("compute_individuals 5 (" + str(pBlock1) + ")", elapsed5,Ops)
     #gpG.WriteCSV_OpS("compute_individuals 5 ", elapsed5,Ops)
 
@@ -263,22 +269,24 @@ def compute_individuals(
       hOutIndividuals = hOutIndividualsBlock
       hStackIdx = hStackIdxBlock
       hStack = hStackBlock
-      #print("Entro 1")
     else :
       # Join device blocks with in one local block 
       hOutIndividuals = np.hstack((hOutIndividuals, hOutIndividualsBlock))
       pBlocki = pBlocki_ant + hStackIdxBlock.shape[0]
-      hStackIdx[pBlocki_ant:pBlocki] = hStackIdxBlock   
+      hStackIdx[pBlocki_ant:pBlocki] = hStackIdxBlock  
       pBlocki_ant = pBlocki
 
       pBlocks = pBlocks_ant + hStackBlock.shape[0]
+
+      # print("hstack.shape[0]:", hStack.shape[0], "pBlocks_ant: ", pBlocks_ant, " pBlocks:", pBlocks, " hStackBlock.shape[0]:",  hStackBlock.shape[0])
       hStack[pBlocks_ant:pBlocks] = hStackBlock
       pBlocks_ant = pBlocks
+
     #end if
 
     pBlock1 = pBlock1 + 1
 
-    #elapsed6 = time.time() - start_time - elapsed5 - elapsed4 - elapsed3 - elapsed2 - elapsed1
+    elapsed6 = time.time() - start_time - elapsed5 - elapsed4 - elapsed3 - elapsed2 - elapsed1
     # print("compute_individuals 6 (" + str(pBlock1) + ")", elapsed6,Ops)
     #gpG.WriteCSV_OpS("compute_individuals 6 ", elapsed6,Ops)
         
@@ -292,13 +300,13 @@ def compute_individuals(
       finalBlock = numIndividuals
   # End while
 
-  #elapsed7 = time.time() - start_time - elapsed6 - elapsed5 - elapsed4 - elapsed3 - elapsed2 - elapsed1
+  elapsed7 = time.time() - start_time - elapsed6 - elapsed5 - elapsed4 - elapsed3 - elapsed2 - elapsed1
   # print("compute_individuals 7 (" + str(pBlock1) + ")", elapsed7,Ops)
 
   elapsed = time.time() - start_time 
   Ops = (numIndividuals  * nrowTrain * GenesIndividuals)
   #print("compute_individuals (" + str(pBlock1) + ")", elapsed,Ops)
-  gpG.WriteCSV_OpS("compute_individuals (" + str(pBlock1) + ")", elapsed,Ops)
+  # gpG.WriteCSV_OpS("compute_individuals (" + str(pBlock1) + ")", elapsed,Ops)
 
   del hStackModelBlock
   #Free local memory 
@@ -317,6 +325,238 @@ def compute_individuals(
 
   return hOutIndividuals, hStack, hStackIdx, hStackModel
 # *************************  End of Compute Individuals  **************************
+
+
+
+# ********************************************************************************
+def compute_individuals2(
+        hInitialPopulation,
+        hData,
+        numIndividuals,
+        GenesIndividuals,
+        nrowTrain,
+        nvar,
+        getStackModel):
+
+    # Total elements of the data train matrix to form
+    totalElements = nrowTrain * nvar
+
+    # Total elements of the number of individuals in the initial population
+    sizeIndividuals = numIndividuals
+    
+    # Total elements of semantics elements for the entire population with training data
+    sizeIndividualsTrain = numIndividuals * nrowTrain
+
+    # Total elements of the training data
+    sizeDataTrain = totalElements
+
+    # Total elements of the resulting Model
+    sizeModel = GenesIndividuals * numIndividuals * nrowTrain
+
+    # Total elements of Population
+    sizePopulation = numIndividuals * GenesIndividuals
+
+    # Total elements of Stack (size Stack)
+    sizeStack = sizePopulation * nrowTrain
+
+    # Total elements of Idx Stack
+    sizeStackIdx = sizeIndividuals * nrowTrain
+
+    # ********** Cálculo de memoria requerida (GPU) **********
+    memRequired = (np.dtype(np.float32).itemsize) * (
+        sizePopulation +
+        sizeIndividualsTrain +
+        sizeDataTrain +
+        sizeStack +
+        sizeStackIdx +
+        sizeModel
+    )
+
+    memRest = gpG.free_mem - memRequired
+    memUsePercent = memRequired / gpG.free_mem
+    memUsePercent2 = memUsePercent - math.floor(memUsePercent)
+
+    memUsePercent = math.ceil(memUsePercent)
+
+    if memUsePercent2 > 0.85:
+        memUsePercent = memUsePercent + 1
+
+    if memUsePercent <= 1:
+        memUsePercent = 1
+
+    # We obtain the number of blocks that are necessary to evaluate the population 
+    # with respect to the data. The goal is to use no more than 85% of the available 
+    # memory on the GPU device when processing each block.      
+    numIndividualsBlock = math.ceil(numIndividuals / memUsePercent)
+
+    initialBlock = 0
+    finalBlock = numIndividualsBlock
+
+    # Aplanamos datos de entrenamiento y los mandamos a GPU
+    hData = np.reshape(hData, -1)
+    dDataTrain = cuda.to_device(hData)
+
+    # ******************  Individuals Evaluation  ********************
+
+    # 🔹 PREASIGNAR vectores grandes EN VEZ DE USAR np.hstack
+    hOutIndividuals = np.zeros(sizeIndividualsTrain, dtype=np.float32)
+    hStack = np.zeros(sizeStack, dtype=np.float32)
+    hStackIdx = np.zeros(sizeStackIdx, dtype=np.float32)
+
+    if getStackModel == 1:
+        hStackModel = np.zeros(sizeModel, dtype=np.float32)
+    else:
+        hStackModel = []
+
+    dOutIndividualsBlock = 0
+
+    start_time = time.time()
+    Ops = 0
+
+    pBlock1 = 0  # solo para contar bloques, ya no se usa para lógica de copia
+
+    while finalBlock <= numIndividuals:
+        # Tamaños por bloque (en individuos)
+        numIndividualsBlockLocal = finalBlock - initialBlock  # OJO: puede ser menor en el último bloque
+
+        sizePopulationBlock = numIndividualsBlockLocal * GenesIndividuals
+        sizeIndividualsBlock = numIndividualsBlockLocal * nrowTrain
+        memStackBlock = sizePopulationBlock * nrowTrain
+        memStackIdxBlock = sizeIndividualsBlock
+        sizeModelBlock = numIndividualsBlockLocal * GenesIndividuals * nrowTrain
+        totalSemanticElementsBlock = numIndividualsBlockLocal * nrowTrain
+
+        # ********** Arrays de host POR BLOQUE **********
+        hStackBlock = np.zeros(memStackBlock, dtype=np.float32)
+        hStackIdxBlock = np.zeros(memStackIdxBlock, dtype=np.float32)
+        hOutIndividualsBlock = np.zeros(sizeIndividualsBlock, dtype=np.float32)
+        hArrayTmp = np.zeros(numIndividualsBlockLocal, dtype=np.float32)  # si el kernel lo permite
+
+        if getStackModel == 1:
+            hStackModelBlock = np.zeros(sizeModelBlock, dtype=np.float32)
+        else:
+            # Dummy pequeño por si el kernel espera algo
+            hStackModelBlock = np.zeros(1, dtype=np.float32)
+
+        # ********** Población inicial por bloque **********
+        if finalBlock == numIndividuals and pBlock1 == 0:
+            # Primer y único bloque (no se fragmentó la población)
+            hInitialPopulationBlock = hInitialPopulation
+        else:
+            startPop = initialBlock * GenesIndividuals
+            endPop = finalBlock * GenesIndividuals
+            hInitialPopulationBlock = hInitialPopulation[startPop:endPop]
+
+        # ********** Copiar a GPU **********
+        dInitialPopulationBlock = cuda.to_device(hInitialPopulationBlock)
+        dOutIndividualsBlock = cuda.to_device(hOutIndividualsBlock)
+        dStackBlock = cuda.to_device(hStackBlock)
+        dStackIdxBlock = cuda.to_device(hStackIdxBlock)
+        dArrayTmp = cuda.to_device(hArrayTmp)
+
+        if getStackModel == 1:
+            dStackModelBlock = cuda.to_device(hStackModelBlock)
+        else:
+            # Dummy pequeño por si el kernel lo requiere como parámetro
+            dStackModelBlock = cuda.to_device(np.zeros(1, dtype=np.float32))
+
+        MaxOcup = gpCuda.gpuMaxUseProc(totalSemanticElementsBlock)
+        blocksize = MaxOcup["BlockSize"]
+        gridsize = MaxOcup["GridSize"]
+
+        # ********** Llamada al kernel en GPU **********
+        gpCuda.compute_individuals[blocksize, gridsize](
+            dInitialPopulationBlock,
+            dOutIndividualsBlock,
+            dDataTrain,
+            numIndividualsBlockLocal,
+            GenesIndividuals,
+            nrowTrain,
+            nvar,
+            dStackBlock,
+            dStackIdxBlock,
+            getStackModel,
+            dStackModelBlock,
+            dArrayTmp
+        )
+
+        cuda.synchronize()
+
+        # ********** Copiar resultados DE GPU A HOST **********
+        hOutIndividualsBlock = dOutIndividualsBlock.copy_to_host()
+        hStackBlock = dStackBlock.copy_to_host()
+        hStackIdxBlock = dStackIdxBlock.copy_to_host()
+        if getStackModel == 1:
+            hStackModelBlock = dStackModelBlock.copy_to_host()
+
+        # ********** COPIA POR SLICES EN VEZ DE np.hstack **********
+
+        # 1) hOutIndividuals: tamaño total = numIndividuals * nrowTrain
+        #    Cada individuo ocupa nrowTrain posiciones.
+        out_start = initialBlock * nrowTrain
+        out_end = out_start + sizeIndividualsBlock
+        hOutIndividuals[out_start:out_end] = hOutIndividualsBlock
+
+        # 2) hStackIdx: misma lógica que hOutIndividuals
+        idx_start = initialBlock * nrowTrain
+        idx_end = idx_start + sizeIndividualsBlock
+        hStackIdx[idx_start:idx_end] = hStackIdxBlock
+
+        # 3) hStack y hStackModel:
+        #    Flatten por genes e individuos:
+        #    población global = numIndividuals * GenesIndividuals
+        #    en este bloque: numIndividualsBlockLocal * GenesIndividuals
+        pop_start = initialBlock * GenesIndividuals
+        pop_end = pop_start + sizePopulationBlock
+
+        stack_start = pop_start * nrowTrain
+        stack_end = stack_start + memStackBlock
+
+        hStack[stack_start:stack_end] = hStackBlock
+
+        if getStackModel == 1:
+            hStackModel[stack_start:stack_end] = hStackModelBlock
+
+        # ********** Limpiar temporales de GPU para este bloque **********
+        del dInitialPopulationBlock
+        del dOutIndividualsBlock
+        del dStackBlock
+        del dStackIdxBlock
+        del dArrayTmp
+        del dStackModelBlock
+        gc.collect()
+
+        pBlock1 += 1
+
+        # ********** Actualizar rangos de bloque **********
+        if finalBlock >= numIndividuals:
+            break
+
+        initialBlock = finalBlock
+        finalBlock = initialBlock + numIndividualsBlock
+        if finalBlock > numIndividuals:
+            finalBlock = numIndividuals
+
+    # ********** Fin del while **********
+
+    elapsed = time.time() - start_time
+    Ops = numIndividuals * nrowTrain * GenesIndividuals
+    # print("compute_individuals (" + str(pBlock1) + ")", elapsed, Ops)
+    # gpG.WriteCSV_OpS("compute_individuals (" + str(pBlock1) + ")", elapsed, Ops)
+
+    # Limpieza final de algunos temporales de host
+    del hStackBlock
+    del hStackIdxBlock
+    del hInitialPopulationBlock
+    del hOutIndividualsBlock
+    if getStackModel == 1:
+        del hStackModelBlock
+    gc.collect()
+
+    return hOutIndividuals, hStack, hStackIdx, hStackModel
+# *************************  End of Compute Individuals 2  **************************
+
+
 
 # ****************************  Evaluate Individuals  *****************************
 def ComputeError(self,

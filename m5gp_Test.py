@@ -21,10 +21,17 @@ from sklearn.preprocessing import StandardScaler
 #dataset1 = pd.DataFrame(pd.read_csv("/home/acardenasf/pmlb/datasets5/589_fri_c2_1000_25/589_fri_c2_1000_25.tsv" ,sep='/s+', header=None))
 #dataset1 = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/test_10107_1.csv" ,sep=' ', header=None))
 #dataset1 = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/207_autoPrice.tsv" ,sep='\t', header=None))
-dataset1 = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/344_mv.tsv" ,sep='\t', header=None))
+#dataset1 = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/344_mv.tsv" ,sep='\t', header=None))
+#dataset1 = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/687_sleuth_ex1605.tsv" ,sep='\t', header=None))
+#dataset1 = pd.DataFrame(pd.read_csv("/home/acardenasf/datasets/218_house_8L.tsv" ,sep='\t', header=None))
+
+dsFile = "/home/acardenasf/datasets/1089_USCrime.tsv"
+
+dataset1 = pd.DataFrame(pd.read_csv(dsFile ,sep='\t', header=None))
 
 
-print("Leyo dataset")
+
+print("Leyo dataset:" , dsFile)
 nrows = len(dataset1.index)
 if (nrows > 10000):
     print("Hay mas de 10000")
@@ -59,19 +66,19 @@ if (scaled):
 
 #functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs", "sum","prod", "avg", "std"]
 #Operadores = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
-functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
+functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "sqrt", "exp", "log", "abs"]
 #functions_set = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs"]
-functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
+#functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
 
 print('Running m5gp ...')  
  
-est = m5gp( generations=50, # number of generations (limited by default) (40)
-            Individuals=512, # number of individuals (512)
-            GenesIndividuals=64, # number of genes per individual (64)
-            mutationProb=0.1, # mutation rate probability (0.1)
-            mutationDeleteRateProb=0.05,  # mutation delete rate probality (0.05)
-            sizeTournament=0.15, # size of tournament (0.15)
-            evaluationMethod=2,  #error evaluation method (2)
+est = m5gp( generations=30, # number of generations (limited by default) (40) (30)
+            Individuals=256, # number of individuals (512) (256)
+            GenesIndividuals=128, # number of genes per individual (64) (128)
+            mutationProb=0.1, # mutation rate probability (0.1) (0.1)
+            mutationDeleteRateProb=0.01,  # mutation delete rate probality (0.05) (0.01)
+            sizeTournament=0.15, # size of tournament (0.15) (0.15)
+            evaluationMethod=2,  #error evaluation method (2) (2)
                         # 0=RMSE, 
                         # 1=R2, 
                         #cuML Methods
@@ -85,10 +92,10 @@ est = m5gp( generations=50, # number of generations (limited by default) (40)
                         #10=MiniBatch elasticnet regularization 
             scorer=0, #Compute Error using: 0/1 => RMSE, 2 => R2 (0)
             maxRandomConstant=1, #number of constants (-maxRandomConstant to maxRandomConstant) (1)
-            genOperatorProb=0.45, #probablity for generate Operators (0.45)
-            genVariableProb=0.40, #probablity for generate variables (0.40)
-            genConstantProb=0.05, #probablity for generate constants (0.05)
-            genNoopProb=0.1, #probablity for generate NOOP Operators (0.1)
+            genOperatorProb=0.50, #probablity for generate Operators (0.45) (0.50)
+            genVariableProb=0.39, #probablity for generate variables (0.40) (0.39)
+            genConstantProb=0.1, #probablity for generate constants (0.05) (0.1)
+            genNoopProb=0.01, #probablity for generate NOOP Operators (0.1) (0.01)
 			useOpIF=0, #Set if use IF operator (0)
             functions_set = functions_set, # Set of operators for include into individuals 
             log=1, #save log files (1)

@@ -60,11 +60,12 @@ OP_SDV = -10013 # Standard deviation operator
 # ***************************************************************
 OP_TAN = -10014 # Tan Operator
 OP_TANH =  -10015 # Tan Hyperbolic Operator
+OP_SQRT = -10016 # Square_Root Operator 
 
 # ***************************************************************
 # Si se agrega un nuevo operador, incrementar el valor de OP_END
 # ***************************************************************
-OP_END = -10016 # Final operator
+OP_END = -10017 # Final operator
 OP_IF = OP_END
 
 # ***************************************************************
@@ -95,6 +96,7 @@ OPERADORES_MASTER = {
     "std": OP_SDV, # Standard deviation operator
     "tan": OP_TAN, # Tangent operator
     "tanh": OP_TANH, # Tangent hyperbolic operador"
+    "sqrt": OP_SQRT, # Square_Root
     "if": OP_IF # Conditional operator
 }
 
@@ -102,6 +104,7 @@ PI = 3.14159265
 
 MAX_R2_NEG  = -5000
 MAX_RMSE = 9999999
+MIN_RMSE = 0.0
 MAX_CONSTANT = 999
 MIN_CONSTANT = MAX_CONSTANT * (-1)
 
@@ -267,6 +270,7 @@ def getIndividualExpr(config,
     numOpSdv = 0
     numOpTan = 0
     numOpTanH = 0
+    numOpSqrt = 0
     Expr = ""
 
     var_ini = math.fabs(VAR_INI)
@@ -307,24 +311,28 @@ def getIndividualExpr(config,
             Expr = Expr + "Abs\t"
 
         elif (gene == OP_SUM) :
-            numOpAbs = numOpSum +1
+            numOpSum = numOpSum +1
             Expr = Expr + "SUM\t"
         elif (gene == OP_PRD) :
-            numOpAbs = numOpPrd +1
+            numOpPrd = numOpPrd +1
             Expr = Expr + "PROD\t"
         elif (gene == OP_AVG) :
-            numOpAbs = numOpAvg +1
+            numOpAvg = numOpAvg +1
             Expr = Expr + "AVG\t"
         elif (gene == OP_SDV) :
-            numOpAbs = numOpSdv +1
+            numOpSdv = numOpSdv +1
             Expr = Expr + "SDV\t"
 
         elif (gene == OP_TAN) :
-            numOpAbs = numOpTan +1
+            numOpTan = numOpTan +1
             Expr = Expr + "tan\t"
         elif (gene == OP_TANH) :
-            numOpAbs = numOpTanH +1
+            numOpTanH = numOpTanH +1
             Expr = Expr + "tanh\t"
+        elif (gene == OP_SQRT) :
+            numOpSqrt = numOpSqrt +1
+            Expr = Expr + "sqrt\t"
+            
 
         elif ((gene == OP_IFE) or (gene == OP_IFG) or (gene == OP_IFL)) :
             numOpIf = numOpIf + 1
@@ -389,6 +397,8 @@ def getGeneExp(config, gene) :
         Expr += "tan"
     elif (gene == OP_TANH) :
         Expr += "tanh"
+    elif (gene == OP_SQRT) :
+        Expr += "sqrt"
 
     elif ((gene <= VAR_INI) and ((gene >= maxVar)) and (gene.is_integer())) :
         Expr += "X_"
@@ -464,7 +474,7 @@ def getStackModelExpr(config, Model) :
             # End if
 
         # ********* Es un operador de seno, coseno, exponente, logaritmo, absoluto, tangente, tangente hyperbolica ************/
-        elif ((gene ==  OP_SIN) or (gene == OP_COS) or (gene == OP_EXP)  or (gene == OP_ABS) or (gene == OP_TAN) or (gene == OP_TANH)) :
+        elif ((gene ==  OP_SIN) or (gene == OP_COS) or (gene == OP_EXP)  or (gene == OP_ABS) or (gene == OP_TAN) or (gene == OP_TANH) or (gene == OP_SQRT)) :
             if (not stackModel.empty()) :
                 tmp = stackModel.get()
                 strCont = tmp[0 : tmp.find(":")]
@@ -746,7 +756,7 @@ def m4gpModel(config, Model, Coef, Intercep) :
             # End if
 
         # ********* Es un operador de seno, coseno, exponente, logaritmo, absoluto, tangente, tangente hyperbolica ************/
-        elif ((gene == OP_SIN) or (gene == OP_COS) or (gene == OP_EXP) or (gene == OP_LOG) or (gene == OP_ABS) or (gene == OP_TAN) or (gene == OP_TANH)) :
+        elif ((gene == OP_SIN) or (gene == OP_COS) or (gene == OP_EXP) or (gene == OP_LOG) or (gene == OP_ABS) or (gene == OP_TAN) or (gene == OP_TANH) or (gene == OP_SQRT)) :
             tmpArr = []
             if (not stackModel.empty()) :
                 tmp = stackModel.get()
