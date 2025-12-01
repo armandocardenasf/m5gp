@@ -29,8 +29,6 @@ dsFile = "/home/acardenasf/datasets/1089_USCrime.tsv"
 
 dataset1 = pd.DataFrame(pd.read_csv(dsFile ,sep='\t', header=None))
 
-
-
 print("Leyo dataset:" , dsFile)
 nrows = len(dataset1.index)
 if (nrows > 10000):
@@ -78,7 +76,7 @@ est = m5gp( generations=30, # number of generations (limited by default) (40) (3
             mutationProb=0.1, # mutation rate probability (0.1) (0.1)
             mutationDeleteRateProb=0.01,  # mutation delete rate probality (0.05) (0.01)
             sizeTournament=0.15, # size of tournament (0.15) (0.15)
-            evaluationMethod=2,  #error evaluation method (2) (2)
+            evaluationMethod=4,  #error evaluation method (2) (2)
                         # 0=RMSE, 
                         # 1=R2, 
                         #cuML Methods

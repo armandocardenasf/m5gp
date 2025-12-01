@@ -121,6 +121,10 @@ sizePopulation = 0
 sizeIndividuals = 0
 sizeTournament = 0
 
+# sizeMemPopulation = 0
+# sizeMemIndividuals  = 0
+# sizeTournament = 0
+
 def get_gpu_memory_info():
     free = ctypes.c_size_t()
     total = ctypes.c_size_t()

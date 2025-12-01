@@ -111,7 +111,7 @@ def createCumlMethod(mFitness) :
         slr = Ridge(alpha=0.5, # (default = 1.0)
                     fit_intercept=True, # (default = True)
                     normalize=False, # (default = False)
-                    solver="auto", #solver {‘eig’, ‘svd’, ‘cd’, 'auto'} (default = ‘eig’)
+                    solver='auto', #solver {‘eig’, ‘svd’, ‘cd’, 'auto'} (default = ‘eig’)
                     verbose=6)
 
     if mFitness == 5 :
@@ -188,6 +188,7 @@ def ExecCuml(nProc, hFit,  st, mFitness, indiv, genes, nrows, hStackIdx, y_train
     if (sCols >= 1) :
         cX = cp.asarray(sX_train, dtype=cp.float32)
         cY = cp.asarray(y_train, dtype=cp.float32)
+
         try:
             # Procesamos el Fit con el arreglo transformado
             reg = slr.fit(cX, cY)
