@@ -104,6 +104,33 @@ Mathematical and Computational Applications Journal, MDPI. [DOI](https://doi.org
 This work was supported by CONAHCYT (Mexico) project CF-2023-I-724, TecNM (Mexico)
 projects 16788.23-P and 17756.23-P, and the last author was supported by CONAHCYT (Mexico)
 doctoral scholarship with CVU number 771416.
- 
+
+ ***
+## 📢 New Version Available: M5GP 2.0
+
+A new generation of the M5GP framework, **M5GP 2.0**, is now available.
+
+**M5GP 2.0** extends and enhances the original M5GP algorithm through a redesigned architecture, improved evolutionary operators, numerical stability mechanisms, and optimized GPU execution. While it **derives conceptually from M5GP (v1)**, it is maintained as a **fully independent project** with a clean development history and expanded experimental scope.
+
+### 🔹 Why M5GP 2.0?
+M5GP 2.0 introduces:
+- Extended symbolic operators and aggregation functions
+- Adaptive mutation strategies (UMAD)
+- Improved numerical stability and regularization
+- Enhanced GPU acceleration using Numba and RAPIDS cuML
+- Reproducible experimental pipelines (SRBench, DIGEN)
+
+### 🔹 Repository
+The official repository for M5GP 2.0 is available at:
+
+👉 **https://github.com/armandocardenasf/m5gp-2.0**
+
+### 🔹 Version Status
+- **M5GP (this repository)**: stable, legacy version for reference and backward compatibility  
+- **M5GP 2.0**: actively developed and recommended for new research and experimentation
+
+Users are encouraged to adopt **M5GP 2.0** for new projects and experimental studies.
+***
+
 
 
