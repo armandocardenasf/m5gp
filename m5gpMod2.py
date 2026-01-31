@@ -1,6 +1,13 @@
 import numpy as np
-from numba import njit
 from collections import Counter
+
+try:
+    from numba import njit
+    GPU_IMPORTS = True
+except ImportError:
+    GPU_IMPORTS = False  
+    def njit(func):
+        return func
 
 # =========================
 # 1) PREPARACIÓN POR GENERACIÓN

@@ -9,6 +9,7 @@ import numpy as np
 import sympy as sym
 from sympy import symbols, Mul, simplify, count_ops
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 
 ##import kagglehub
 ### Download latest version
@@ -46,6 +47,12 @@ y = dataset.iloc[:nrows, nvar-1]
 x_train = dataset.iloc[0:nrows, 0:nvar-1].to_numpy().astype(np.float32)
 y_train = dataset.iloc[:nrows, nvar-1].to_numpy().astype(np.float32)
 
+# # generate train/test split
+# X_train, X_test, y_train, y_test = train_test_split(features, labels,
+#                                                 train_size=0.75,
+#                                                 test_size=0.25,
+#                                                 random_state=random_state)
+
 scaled = True
 if (scaled): 
     print('scaling train X')
@@ -64,15 +71,15 @@ if (scaled):
 
 #functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs", "sum","prod", "avg", "std"]
 #Operadores = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
-functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "sqrt", "exp", "log", "abs"]
-#functions_set = ["+", "-", "*", "/", "sin", "cos", "exp", "log", "abs"]
+#functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "sqrt", "exp", "log", "abs"]
+functions_set = ["+", "-", "*", "/", "sin", "cos", "sqrt", "exp", "log", "abs"]
 #functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "exp", "log", "abs"]
 
 print('Running m5gp ...')  
  
 est = m5gp( generations=30, # number of generations (limited by default) (40) (30)
-            Individuals=256, # number of individuals (512) (256)
-            GenesIndividuals=128, # number of genes per individual (64) (128)
+            Individuals=640, # number of individuals (512) (256)
+            GenesIndividuals=64, # number of genes per individual (64) (128)
             mutationProb=0.1, # mutation rate probability (0.1) (0.1)
             mutationDeleteRateProb=0.01,  # mutation delete rate probality (0.05) (0.01)
             sizeTournament=0.15, # size of tournament (0.15) (0.15)
@@ -90,10 +97,10 @@ est = m5gp( generations=30, # number of generations (limited by default) (40) (3
                         #10=MiniBatch elasticnet regularization 
             scorer=0, #Compute Error using: 0/1 => RMSE, 2 => R2 (0)
             maxRandomConstant=1, #number of constants (-maxRandomConstant to maxRandomConstant) (1)
-            genOperatorProb=0.50, #probablity for generate Operators (0.45) (0.50)
-            genVariableProb=0.39, #probablity for generate variables (0.40) (0.39)
-            genConstantProb=0.1, #probablity for generate constants (0.05) (0.1)
-            genNoopProb=0.01, #probablity for generate NOOP Operators (0.1) (0.01)
+            genOperatorProb=0.45, #probablity for generate Operators (0.45) (0.50)
+            genVariableProb=0.40, #probablity for generate variables (0.40) (0.39)
+            genConstantProb=0.05, #probablity for generate constants (0.05) (0.1)
+            genNoopProb=0.1, #probablity for generate NOOP Operators (0.1) (0.01)
 			useOpIF=0, #Set if use IF operator (0)
             functions_set = functions_set, # Set of operators for include into individuals 
             log=1, #save log files (1)

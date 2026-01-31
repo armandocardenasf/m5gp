@@ -4,16 +4,28 @@
 # nucleos de CUDA para su ejecucion en paralelo
 # Se utiliza la libreria de numba.
 # *********************************************************************
- 
-from numba import cuda, float32, int32
-from numba import jit
-from numba import njit, literal_unroll
-from numba.cuda.random import (create_xoroshiro128p_states,
-                               xoroshiro128p_uniform_float32,
-                               xoroshiro128p_normal_float32,
-							   xoroshiro128p_normal_float64)
-from numba.typed import List
-from numba.typed import Dict
+
+try:
+	from numba import cuda, float32, int32
+	from numba import jit
+	from numba import njit, literal_unroll
+	from numba.cuda.random import (create_xoroshiro128p_states,
+								xoroshiro128p_uniform_float32,
+								xoroshiro128p_normal_float32,
+								xoroshiro128p_normal_float64)
+	from numba.typed import List
+	from numba.typed import Dict
+	GPU_IMPORTS = True
+except ImportError:
+	GPU_IMPORTS = False  
+	class _FakeCuda:
+		def jit(self, *args, **kwargs):
+			def wrapper(func):
+				return func
+			return wrapper
+	cuda = _FakeCuda()
+
+
 
 import math
 import numpy as np

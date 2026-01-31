@@ -9,12 +9,18 @@ import math
 import time
 import gc
 
-import numpy as np
-import cupy as cp
+try:
+  import numpy as np
+  import cupy as cp
 
-from numba import cuda
-from numba.cuda.random import (create_xoroshiro128p_states,
-                               xoroshiro128p_uniform_float32)
+  from numba import cuda
+  from numba.cuda.random import (create_xoroshiro128p_states,
+                                xoroshiro128p_uniform_float32)
+  GPU_IMPORTS = True
+except ImportError:
+  GPU_IMPORTS = False  
+
+
 
 import m5gpGlobals as gpG
 import m5gpCudaMethods as gpCuda

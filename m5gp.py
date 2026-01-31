@@ -17,12 +17,18 @@ import pandas as pd
 import numpy as np
 import time
 import gc
-import cupy as cp
-import torch
-
-from numba import cuda
-from numba.cuda.random import (create_xoroshiro128p_states,
+try:
+  import cupy as cp
+  from numba import cuda
+  from numba.cuda.random import (create_xoroshiro128p_states,
                                xoroshiro128p_uniform_float32)
+  #import torch
+  GPU_CUPY = True
+except ImportError:
+  GPU_CUPY = False  
+
+
+
 # import rmm 
 # from rmm.allocators.cupy import rmm_cupy_allocator
 
@@ -357,6 +363,9 @@ class m5gpRegressor(BaseEstimator):
       idx_b1 = indexBestOffspring * self.GenesIndividuals + self.GenesIndividuals
       mBestIndividual = hNewPopulation[idx_a1:idx_b1]
 
+
+      #Initialize operators weigth
+      #pesos_por_id = {op: 1.0/len(self.valid_functions_set) for op in self.valid_functions_set}
       pesos_por_id = gpM2.actualizar_pesos_operadores(pesos_por_id, mBestIndividual, oldFit, newFit, self.valid_functions_set)
       op_weights = np.array([pesos_por_id[int(oid)] for oid in self.valid_functions_set], dtype=np.float32)
 
@@ -482,8 +491,8 @@ class m5gpRegressor(BaseEstimator):
       # generadas y almacenadas en el stack del mejor modelo
       allStackExpr = gpG.getStackModelExpr(self, stackBestModel_p)
       
-      #print("allStackExpr:")
-      #print(allStackExpr)
+      print("allStackExpr:")
+      print(allStackExpr)
 
       # De la cadena completa de expresiones obtenemos el numero  
       # de stacks de expresiones disponibles
@@ -865,12 +874,12 @@ class m5gpClassifier(BaseEstimator):
   """
   #method to initialize the class
   def __init__(self, 
-            generations=5, 
-            Individuals=32, 
+            generations=1, 
+            Individuals=3, 
             GenesIndividuals=1024, 
             mutationProb=0.1, 
             mutationDeleteRateProb=0.01,  
-            evaluationMethod=2, 
+            evaluationMethod=0, 
             scorer=0,  
             sizeTournament=0.15, 
             maxRandomConstant=1, 
@@ -924,7 +933,7 @@ class m5gpClassifier(BaseEstimator):
     self.params = None
     self.CrossAverage = CrossAverage
 
-    print(gpCuM2.cuGetMethodNameClassification(self))
+    #print(gpCuM2.cuGetMethodNameClassification(self))
     print("Initializing m5gp classifier")
 
     # Check if CUDA and Device GPU are available
@@ -1249,6 +1258,9 @@ class m5gpClassifier(BaseEstimator):
     # generadas y almacenadas en el stack del mejor modelo
     allModelExpr = gpG.getStackModelExpr(self, stackBestModel_p)
 
+    print("allStackExpr:")
+    print(allModelExpr)
+  
     final_expression = []
     nodes = True
     for expression in allModelExpr:

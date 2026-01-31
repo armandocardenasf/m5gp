@@ -13,9 +13,15 @@ import warnings
 import numpy as np
 import atexit
 
-from numba import cuda
-import torch
+
 import ctypes
+
+try:
+  from numba import cuda
+  import torch
+  GPU_IMPORTS = True
+except ImportError:
+  GPU_IMPORTS = False  
 
 
 # from   pycuda.compiler import SourceModule

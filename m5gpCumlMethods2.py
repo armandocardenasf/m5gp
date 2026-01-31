@@ -8,8 +8,19 @@
 import math
 import time
 import copy
-import cupy as cp
-import cudf
+
+try:
+    import cupy as cp
+    GPU_CUPY = True
+except ImportError:
+    GPU_CUPY = False
+
+try:
+    import cudf
+    GPU_DF = True
+except ImportError:
+    GPU_DF = False
+
 import gc
 import numpy as np
 import pandas as pd
@@ -18,42 +29,43 @@ import pandas as pd
 #import rmm
 #from rmm.allocators.cupy import rmm_cupy_allocator
 
-import cuml as cu
-from cuml import LinearRegression
-from cuml.linear_model import LinearRegression
-from cuml import Ridge
-from cuml.linear_model import Ridge
-from cuml.linear_model import Lasso
-from cuml.kernel_ridge import KernelRidge
-from cuml.linear_model import ElasticNet
+try:
+    import cuml as cu
+    from cuml import LinearRegression
+    from cuml.linear_model import LinearRegression
+    from cuml import Ridge
+    from cuml.linear_model import Ridge
+    from cuml.linear_model import Lasso
+    from cuml.kernel_ridge import KernelRidge
+    from cuml.linear_model import ElasticNet
 
-from cuml import LogisticRegression
-from cuml import SVC
-from cuml import RandomForestClassifier
-from cuml import KNeighborsClassifier
-from cuml import MBSGDClassifier
+    from cuml import LogisticRegression
+    from cuml import SVC
+    from cuml import RandomForestClassifier
+    from cuml import KNeighborsClassifier
+    from cuml import MBSGDClassifier
+
+    from cuml.linear_model import MBSGDRegressor as cumlMBSGDRegressor
+
+    # import metrics
+    from cuml.metrics.regression import mean_squared_error as cuMSE
+    from cuml.metrics.regression import r2_score as cuR2
+
+    from cuml.metrics import accuracy_score
+    #from cuml.metrics.accuracy import accuracy_score 
+    from cuml.metrics import roc_auc_score 
+    from sklearn.metrics import f1_score
+    #from cuml.metrics import f1_score
+    from sklearn.metrics import average_precision_score
+    #from cuml.metrics import average_precision_score
+    #from sklearn.preprocessing import StandardScaler
+    from cuml.model_selection import train_test_split
+    from cuml.preprocessing import StandardScaler
+    GPU_CUML = True
+except ImportError:
+    GPU_CUML = False
 
 
-# import metrics
-from cuml.metrics.regression import mean_squared_error as cuMSE
-from cuml.metrics.regression import r2_score as cuR2
-
-from cuml.metrics import accuracy_score
-#from cuml.metrics.accuracy import accuracy_score 
-from cuml.metrics import roc_auc_score 
-from sklearn.metrics import f1_score
-#from cuml.metrics import f1_score
-from sklearn.metrics import average_precision_score
-#from cuml.metrics import average_precision_score
-#from sklearn.preprocessing import StandardScaler
-from cuml.model_selection import train_test_split
-from cuml.preprocessing import StandardScaler
-
-
-
-#from cuml.linear_model import MBSGDRegressor as cumlMBSGDRegressor
-#from cuml.metrics.regression import mean_squared_error as cuMSE
-#from cuml.metrics.regression import r2_score as cuR2
 
 from multiprocessing import Pool
 from multiprocessing import set_start_method
@@ -84,7 +96,7 @@ def cuGetMethodNameClassification(self):
 
 def getDefaultParams(evaluationMethod):
 
-    if evaluationMethod == 0:
+    if evaluationMethod == 0: # Logistic Regression 
             defaultParams = {
                 "penalty": "l2",  # Default value
                 "tol": 1e-4,  # Default value
@@ -99,7 +111,7 @@ def getDefaultParams(evaluationMethod):
                 "output_type": None
             }
 
-    elif evaluationMethod == 1:
+    elif evaluationMethod == 1: # Support Vector Classifier
         defaultParams = {
                 "C": 92.5,  # Default value
                 "kernel": "rbf",  # Default value
@@ -115,7 +127,7 @@ def getDefaultParams(evaluationMethod):
                 "class_weight" : 'balanced'
             }
 
-    elif evaluationMethod == 2:
+    elif evaluationMethod == 2: # Random Forest Classifier
         defaultParams = {
                 "n_estimators": 200,  # Default value
                 "split_criterion": 0,  # Default value
@@ -136,7 +148,7 @@ def getDefaultParams(evaluationMethod):
                 "output_type": None  # Default value
             }
 
-    elif evaluationMethod == 3:
+    elif evaluationMethod == 3: # K Neighbors Classifier
         defaultParams = {
                 "n_neighbors": 5,  # Default value
                 "algorithm": "auto",  # Default value
@@ -145,7 +157,7 @@ def getDefaultParams(evaluationMethod):
                 "verbose": False,  # Default value
                 "output_type": None  # Default value
             }
-    elif evaluationMethod == 4:
+    elif evaluationMethod == 4: # Mini Batch Classifier
         defaultParams = {
                 "loss": 'hinge',
                 "penalty": "l2",
@@ -299,7 +311,7 @@ def EvaluateCuml2Classification(self, hStack, hStackIdx, hFit, y_train) :
     slr = createCumlMethodClassification(self.evaluationMethod, self.params)
     #Ejecuta la evaluacion de CUML de manera secuencial
     for i in range(self.Individuals):
-        print(f"Individual: {i}")
+        #print(f"Individual: {i}")
         hRes = ExecCumlClassification(i, hFit, st, self.evaluationMethod, self.Individuals, self.GenesIndividuals, self.nrowTrain, hStackIdx, y_train, self.scorer, self.params, self.crossVal, self.k, self.averageMode, self.CrossAverage, slr)
         
         # Regresa el modelo de CUML del individuo generado (hRes)
@@ -421,7 +433,7 @@ def CrossValidation(slr, cX , cY, scorer, k, averageMode, CrossAverage):
 
         if math.isnan(score) or math.isinf(score):
             score = 0.01
-        print(f"Training fit ({i}): {scoreTrain} Validation score: {score}")
+        #print(f"Training fit ({i}): {scoreTrain} Validation score: {score}")
         if score > bestCrossScore:
             bestCrossScore = score
             bestModel = copy.deepcopy(slr)

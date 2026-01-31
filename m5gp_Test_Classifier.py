@@ -50,6 +50,7 @@ y_train = y_train.to_numpy().astype(np.float32)
 #     # y_train = y_train_scaled
 
 functions_set = ["+", "-", "*", "/", "sin", "cos", "tan", "tanh", "sqrt", "exp", "log", "abs"]
+functions_set = ["+", "-", "*", "/", "sin", "cos", "sqrt", "exp", "log", "abs"]
 
 print('Ejecutando M5GP en clasificación...')
 
@@ -60,7 +61,7 @@ model = m5gp(
         GenesIndividuals=1024, 
         mutationProb=0.1, 
         mutationDeleteRateProb=0.01,  
-        evaluationMethod=3,  # error evaluation method (2) (2)
+        evaluationMethod=0,  # error evaluation method (2) (2)
                 # - 0: Logistic Regression
                 # - 1: Support Vector Classifier
                 # - 2: Random Forest Classifier

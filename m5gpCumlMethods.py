@@ -8,26 +8,42 @@
 import math
 import time
 import copy
-import cupy as cp
-import cudf
+
+try:
+    import cupy as cp
+    GPU_CUPY = True
+except ImportError:
+    GPU_CUPY = False
+
+try:
+    import cudf
+    GPU_DF = True
+except ImportError:
+    GPU_DF = False
+
 import gc
 import numpy as np
 
 #import rmm
 #from rmm.allocators.cupy import rmm_cupy_allocator
 
-import cuml as cu
-from cuml import LinearRegression
-from cuml.linear_model import LinearRegression
-from cuml import Ridge
-from cuml.linear_model import Ridge
-from cuml.linear_model import Lasso
-from cuml.kernel_ridge import KernelRidge
-from cuml.linear_model import ElasticNet
+try:
+    import cuml as cu
+    from cuml import LinearRegression
+    from cuml.linear_model import LinearRegression
+    from cuml import Ridge
+    from cuml.linear_model import Ridge
+    from cuml.linear_model import Lasso
+    from cuml.kernel_ridge import KernelRidge
+    from cuml.linear_model import ElasticNet
 
-from cuml.linear_model import MBSGDRegressor as cumlMBSGDRegressor
-from cuml.metrics.regression import mean_squared_error as cuMSE
-from cuml.metrics.regression import r2_score as cuR2
+    from cuml.linear_model import MBSGDRegressor as cumlMBSGDRegressor
+    from cuml.metrics.regression import mean_squared_error as cuMSE
+    from cuml.metrics.regression import r2_score as cuR2
+    GPU_CUML = True
+except ImportError:
+    GPU_CUML = False
+
 
 from multiprocessing import Pool
 from multiprocessing import set_start_method
@@ -108,7 +124,7 @@ def createCumlMethod(mFitness) :
                     )
 
     if mFitness == 4 :
-        slr = Ridge(alpha=0.5, # (default = 1.0)
+        slr = Ridge(alpha=0.5, # 0.5 0.75 (default = 1.0)
                     fit_intercept=True, # (default = True)
                     normalize=False, # (default = False)
                     solver='auto', #solver {‘eig’, ‘svd’, ‘cd’, 'auto'} (default = ‘eig’)
@@ -119,8 +135,8 @@ def createCumlMethod(mFitness) :
 
     if mFitness == 6 :
         #net = ElasticNet(alpha=1e-3, l1_ratio=0.1, max_iter=1000, tol=1e-3, output_type="cupy")
-        slr = ElasticNet(alpha = 0.2,  # (default = 1.0)
-                         l1_ratio=0.3,  # (default = 0.5)
+        slr = ElasticNet(alpha = 0.2,  #0.2 0.5 (default = 1.0)
+                         l1_ratio=0.3,  #0.3 0.25 (default = 0.5)
                          solver='cd', # {‘cd’, ‘qn’} (default=’cd’)
                          normalize=False, #  (default = False)
                          max_iter = 80, #  (default = 1000)
